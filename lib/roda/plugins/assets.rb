@@ -136,17 +136,18 @@ class Roda
             compile_assets(:css)
             compile_assets(:js)
           else
+            type, *dirs = type if type.is_a?(Array)
+            dirs ||= []
             files = assets_opts[type]
+            dirs.each{|d| files = files[d]}
 
             case files
             when Hash
-              files.each do |folder, f|
-                compile_process_files(Array(f), type.to_s, folder.to_s)
-              end
+              files.each_key{|dir| compile_assets([type] + dirs + [dir])}
             when nil
               # No files for this asset type
             else
-              compile_process_files(Array(files), type.to_s, type.to_s)
+              compile_process_files(Array(files), type, dirs)
             end
           end
 
@@ -155,14 +156,13 @@ class Roda
 
         private
 
-        def compile_process_files(files, type, folder)
+        def compile_process_files(files, type, dirs)
+          dirs = nil if dirs && dirs.empty?
           require 'digest/sha1'
 
           app = new
           content = files.map do |file|
-            if type != folder && file !~ /\A\.\//
-              file = "#{folder}/#{file}"
-            end
+            file = "#{dirs.join('/')}/#{file}" if dirs
             app.read_asset_file(file, type)
           end.join
 
@@ -175,9 +175,10 @@ class Roda
             end
           end
 
-          key = "#{type}#{".#{folder}" unless type == folder}"
+          suffix = ".#{dirs.join('.')}" if dirs
+          key = "#{type}#{suffix}"
           unique_id = assets_opts[:compiled][key] = Digest::SHA1.hexdigest(content)
-          path = "#{assets_opts.values_at(:compiled_path, :"#{type}_folder", :compiled_name).join('/')}#{".#{folder}" unless type == folder}.#{unique_id}.#{type}"
+          path = "#{assets_opts.values_at(:compiled_path, :"#{type}_folder", :compiled_name).join('/')}#{suffix}.#{unique_id}.#{type}"
           File.open(path, 'wb'){|f| f.write(content)}
           nil
         end
