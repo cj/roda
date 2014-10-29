@@ -64,11 +64,10 @@ class Roda
     # :js_engine :: default engine to use for js (default: 'coffee')
     # :concat_only :: whether to just concatenate instead of concatentating
     #                 and compressing files (default: false)
-    # :compiled :: whether to turn on using compiled files (default: false)
+    # :compiled :: A hash mapping asset identifiers to the unique id for the compiled asset file
     # :headers :: Add additional headers to both js and css rendered files
     # :css_headers :: Add additional headers to your css rendered files
     # :js_headers :: Add additional headers to your js rendered files
-    # :unique_ids :: A hash of types/folders to the unique id for the compiled asset file
     module Assets
       def self.load_dependencies(app, _opts)
         app.plugin :render
@@ -93,8 +92,7 @@ class Roda
         opts[:css_engine]    ||= 'scss'
         opts[:js_engine]     ||= 'coffee'
         opts[:concat_only]     = false unless opts.has_key?(:concat_only)
-        opts[:compiled]        = opts.has_key?(:unique_ids) unless opts.has_key?(:compiled)
-        opts[:unique_ids]    ||= {} 
+        opts[:compiled]        = false unless opts.has_key?(:compiled)
 
         opts[:css_headers]   ||= {} 
         opts[:js_headers]    ||= {} 
@@ -132,6 +130,8 @@ class Roda
         end
 
         def compile_assets(type=nil)
+          assets_opts[:compiled] ||= {}
+
           if type == nil
             compile_assets(:css)
             compile_assets(:js)
@@ -150,8 +150,7 @@ class Roda
             end
           end
 
-          assets_opts[:compiled] = true
-          assets_opts[:unique_ids]
+          assets_opts[:compiled]
         end
 
         private
@@ -177,7 +176,7 @@ class Roda
           end
 
           key = "#{type}#{".#{folder}" unless type == folder}"
-          unique_id = assets_opts[:unique_ids][key] = Digest::SHA1.hexdigest(content)
+          unique_id = assets_opts[:compiled][key] = Digest::SHA1.hexdigest(content)
           path = "#{assets_opts.values_at(:compiled_path, :"#{type}_folder", :compiled_name).join('/')}#{".#{folder}" unless type == folder}.#{unique_id}.#{type}"
           File.open(path, 'wb'){|f| f.write(content)}
           nil
@@ -205,9 +204,9 @@ class Roda
             if dirs && !dirs.empty?
               key = dirs.join('.')
               stype = "#{stype}.#{key}"
-              "#{tag_start}#{o[:compiled_name]}.#{key}.#{o[:unique_ids][stype]}#{tag_end}"
+              "#{tag_start}#{o[:compiled_name]}.#{key}.#{o[:compiled][stype]}#{tag_end}"
             else
-              "#{tag_start}#{o[:compiled_name]}.#{o[:unique_ids][stype]}#{tag_end}"
+              "#{tag_start}#{o[:compiled_name]}.#{o[:compiled][stype]}#{tag_end}"
             end
           else
             asset_folder = o[type]
@@ -263,8 +262,8 @@ class Roda
 
         def assets_regexp(type)
           o = roda_class.assets_opts
-          assets = if o[:compiled]
-            o[:unique_ids].select{|k| k =~ /\A#{type}/}.map do |k, md|
+          assets = if compiled = o[:compiled]
+            compiled.select{|k| k =~ /\A#{type}/}.map do |k, md|
               "#{k.sub(/\A#{type}/, o[:compiled_name])}.#{md}"
             end
           else

@@ -66,18 +66,13 @@ if run_tests
       html.should include('script')
     end
 
-    it 'should only show one link when :compiled is true' do
-      app.assets_opts[:compiled] = true
-      html = body '/test'
-      html.scan(/<link/).length.should == 1
-    end
-
-    it 'should write and accept requests for compiled files' do
+    it 'should handle compiling assets, linking to them, and accept requests for them' do
       app.compile_assets
-      app.assets_opts[:compiled].should == true
       html = body('/test')
+      html.scan(/<link/).length.should == 1
       html =~ %r{href="(/assets/css/app\.[a-f0-9]{40}\.css)"}
       css = body($1)
+      html.scan(/<script/).length.should == 1
       html =~ %r{src="(/assets/js/app\.head\.[a-f0-9]{40}\.js)"}
       js = body($1)
       css.should =~ /color: red;/
