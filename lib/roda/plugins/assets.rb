@@ -133,28 +133,32 @@ class Roda
           assets_opts[:compiled] ||= {}
 
           if type == nil
-            compile_assets(:css)
-            compile_assets(:js)
+            _compile_assets(:css)
+            _compile_assets(:js)
           else
-            type, *dirs = type if type.is_a?(Array)
-            dirs ||= []
-            files = assets_opts[type]
-            dirs.each{|d| files = files[d]}
-
-            case files
-            when Hash
-              files.each_key{|dir| compile_assets([type] + dirs + [dir])}
-            when nil
-              # No files for this asset type
-            else
-              compile_process_files(Array(files), type, dirs)
-            end
+            _compile_assets(type)
           end
 
           assets_opts[:compiled]
         end
 
         private
+
+        def _compile_assets(type)
+          type, *dirs = type if type.is_a?(Array)
+          dirs ||= []
+          files = assets_opts[type]
+          dirs.each{|d| files = files[d]}
+
+          case files
+          when Hash
+            files.each_key{|dir| _compile_assets([type] + dirs + [dir])}
+          when nil
+            # No files for this asset type
+          else
+            compile_process_files(Array(files), type, dirs)
+          end
+        end
 
         def compile_process_files(files, type, dirs)
           dirs = nil if dirs && dirs.empty?
