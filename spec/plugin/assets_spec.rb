@@ -72,16 +72,17 @@ if run_tests
       html.scan(/<link/).length.should == 1
     end
 
-    it 'should write compiled files' do
+    it 'should write and accept requests for compiled files' do
       app.compile_assets
       app.assets_opts[:compiled].should == true
-      app.new.assets(:css) =~ %r{href="(/assets/css/app\.[a-f0-9]{40}\.css)"}
-      css = $1
-      File.read("spec/dummy#{css}").should =~ /color: red;/
-      File.read("spec/dummy#{css}").should =~ /color: blue;/
-      app.new.assets([:js, :head]) =~ %r{src="(/assets/js/app\.head\.[a-f0-9]{40}\.js)"}
-      js = $1
-      File.read("spec/dummy#{js}").should include('console.log')
+      html = body('/test')
+      html =~ %r{href="(/assets/css/app\.[a-f0-9]{40}\.css)"}
+      css = body($1)
+      html =~ %r{src="(/assets/js/app\.head\.[a-f0-9]{40}\.js)"}
+      js = body($1)
+      css.should =~ /color: red;/
+      css.should =~ /color: blue;/
+      js.should include('console.log')
     end
 
     it 'should only allow files in your list' do

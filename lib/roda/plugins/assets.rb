@@ -222,12 +222,8 @@ class Roda
         end
 
         def render_asset(file, type)
-          # convert back url safe to period
-          file.gsub!(/(\$2E|%242E)/, '.')
-
           if self.class.assets_opts[:compiled]
-            folder = file.split('/')[1].split('-', 2)
-            path = "#{self.class.assets_opts.values_at(:compiled_path, :"#{type}_folder", :compiled_name).join('/')}#{".#{folder[1]}" if folder.length > 1}.#{type}"
+            path = "#{self.class.assets_opts.values_at(:compiled_path, :"#{type}_folder").join('/')}/#{file}.#{type}"
             File.read(path)
           else
             read_asset_file file, type
@@ -272,7 +268,13 @@ class Roda
 
         def assets_regexp(type)
           o = roda_class.assets_opts
-          assets = unnest_assets_hash(o[type])
+          assets = if o[:compiled]
+            o[:unique_ids].select{|k| k =~ /\A#{type}/}.map do |k, md|
+              "#{k.sub(/\A#{type}/, o[:compiled_name])}.#{md}"
+            end
+          else
+            unnest_assets_hash(o[type])
+          end
           /#{o[:prefix]}#{o[:"#{type}_folder"]}\/(#{Regexp.union(assets)})\.(#{type})/
         end
 
