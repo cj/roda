@@ -230,25 +230,17 @@ class Roda
         end
 
         def read_asset_file(file, type)
-          assets_opts = self.class.assets_opts
+          o = self.class.assets_opts
+          engine = o[:"#{type}_engine"]
+          folder = o[:"#{type}_folder"]
+          file = "#{o[:path]}/#{folder}/#{file}"
 
-          # set the current engine
-          engine = assets_opts[:"#{type}_engine"]
-
-          # set the current folder
-          folder = assets_opts[:"#{type}_folder"]
-
-          # If it's not a parent directory append the full path
-          if file !~ /\A\.\//
-            file = "#{assets_opts[:path]}/#{folder}/#{file}"
-          end
-
-          if File.exist?("#{file}.#{engine}")
+          if File.exist?(path = "#{file}.#{engine}")
             # render via tilt
-            render(:path => "#{file}.#{engine}")
-          elsif File.exist?("#{file}.#{type}")
+            render(:path => path)
+          elsif File.exist?(path = "#{file}.#{type}")
             # read file directly
-            File.read("#{file}.#{type}")
+            File.read(path)
           elsif file =~ /\.#{type}\z/
             File.read(file)
           else
