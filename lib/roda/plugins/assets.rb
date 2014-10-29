@@ -186,31 +186,32 @@ class Roda
 
       module InstanceMethods
         # This will ouput the files with the appropriate tags
-        def assets(folder, options = {})
-          assets_opts = self.class.assets_opts
-          attrs   = options.map{|k,v| "#{k}=\"#{v}\""}.join(' ')
-          if folder.is_a?(Array)
-            folder_path = ".#{folder.last}"
+        def assets(type, attrs = {})
+          o = self.class.assets_opts
+          attrs = (attrs.map{|k,v| "#{k}=\"#{v}\""}.join(' ') unless attrs.empty?)
+          type, *dirs = type if type.is_a?(Array)
+          stype = type.to_s
+
+          if type == :js
+            tag_start = "<script type=\"text/javascript\" #{attrs} src=\"/#{o[:prefix]}#{o[:"#{stype}_folder"]}/"
+            tag_end = ".#{stype}\"></script>"
           else
-            folder  = [folder]
-          end
-          type    = folder.first
-          if type.to_s == 'js'
-            tag_start = "<script type=\"text/javascript\" #{attrs} src=\"/#{assets_opts[:prefix]}#{assets_opts[:"#{type}_folder"]}/"
-            tag_end = ".#{type}\"></script>"
-          else
-            tag_start = "<link rel=\"stylesheet\" #{attrs} href=\"/#{assets_opts[:prefix]}#{assets_opts[:"#{type}_folder"]}/"
-            tag_end = ".#{type}\" />"
+            tag_start = "<link rel=\"stylesheet\" #{attrs} href=\"/#{o[:prefix]}#{o[:"#{stype}_folder"]}/"
+            tag_end = ".#{stype}\" />"
           end
 
           # Create a tag for each individual file
-          if assets_opts[:compiled]
-            # Generate unique url so middleware knows
-            # to check for # compile/concat
-            "#{tag_start}#{assets_opts[:compiled_name]}#{folder_path}.#{assets_opts[:unique_ids]["#{type}#{folder_path}"]}#{tag_end}"
+          if o[:compiled]
+            if dirs && !dirs.empty?
+              key = dirs.join('.')
+              stype = "#{stype}.#{key}"
+              "#{tag_start}#{o[:compiled_name]}.#{key}.#{o[:unique_ids][stype]}#{tag_end}"
+            else
+              "#{tag_start}#{o[:compiled_name]}.#{o[:unique_ids][stype]}#{tag_end}"
+            end
           else
-            asset_folder = assets_opts
-            folder.each{|f| asset_folder = asset_folder[f]}
+            asset_folder = o[type]
+            dirs.each{|f| asset_folder = asset_folder[f]} if dirs
             asset_folder.map{|f| "#{tag_start}#{f}#{tag_end}"}.join("\n")
           end
         end
