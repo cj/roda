@@ -209,15 +209,9 @@ class Roda
             # to check for # compile/concat
             "#{tag_start}#{assets_opts[:compiled_name]}#{folder_path}.#{assets_opts[:unique_ids]["#{type}#{folder_path}"]}#{tag_end}"
           else
-            files = (folder.length == 1 ? assets_opts[:"#{folder[0]}"] : \
-                    assets_opts[:"#{folder[0]}"][:"#{folder[1]}"])
-
-            files.map do |file|
-              # This allows you to do things like:
-              # assets_opts[:css] = ['app', './bower/jquery/jquery-min.js']
-              file.gsub!(/\./, '$2E')
-              "#{tag_start}#{file}#{tag_end}"
-            end.join("\n")
+            asset_folder = assets_opts
+            folder.each{|f| asset_folder = asset_folder[f]}
+            asset_folder.map{|f| "#{tag_start}#{f}#{tag_end}"}.join("\n")
           end
         end
 
