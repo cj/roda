@@ -263,37 +263,34 @@ class Roda
       end
 
       module RequestClassMethods
-        # Shortcut for roda class asset opts
-        def assets_opts
-          roda_class.assets_opts
+        # The matcher for the assets route
+        def assets_matcher
+          @assets_matcher ||= [assets_regexp(:css), assets_regexp(:js)].freeze
         end
 
-        # The regexp for the assets route
-        def assets_route_regexp
-          @assets_route_regexp ||= begin
-            css_assets = flatten_nested_hash(assets_opts[:css],'css').join('|')
-            js_assets  = flatten_nested_hash(assets_opts[:js], 'js').join('|')
+        private
 
-            Regexp.new "#{assets_opts[:prefix]}(?:#{assets_opts[:css_folder]}|#{assets_opts[:js_folder]})/(#{js_assets}|#{css_assets})(?:\\.|)(css|js|)\\z"
-          end
+        def assets_regexp(type)
+          o = roda_class.assets_opts
+          assets = unnest_assets_hash(o[type])
+          /#{o[:prefix]}#{o[:"#{type}_folder"]}\/(#{Regexp.union(assets)})\.(#{type})/
         end
 
-        def flatten_nested_hash(categories, type)
-          if categories.is_a?(Hash)
-            categories.flat_map do |k, v|
-              flatten_nested_hash(v, type).map{ |m| "#{k}/#{m.gsub(/%242E#{type}\z/, ".#{type}")}"}
-            end
+        def unnest_assets_hash(h)
+          case h
+          when Hash
+            h.map{|k,v| unnest_assets_hash(v).map{|x| "#{k}/#{x}"}}.flatten(1)
           else
-            categories.map{ |m| "#{m.gsub(/\./, '%242E').gsub(/%242E#{type}\z/, ".#{type}")}"}
+            Array(h)
           end
         end
       end
 
       module RequestMethods
-        # Handles calls to the assets route
+        # Handles requests for assets
         def assets
-          on self.class.assets_route_regexp do |file, type|
-            response.headers.merge!(self.class.assets_opts[:"#{type}_headers"])
+          is self.class.assets_matcher do |file, type|
+            response.headers.merge!(self.class.roda_class.assets_opts[:"#{type}_headers"])
             scope.render_asset(file, type)
           end
         end
