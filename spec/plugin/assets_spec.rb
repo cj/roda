@@ -53,12 +53,12 @@ if run_tests
     it 'should handle rendering assets, linking to them, and accepting requests for them when not compiling' do
       html = body('/test')
       html.scan(/<link/).length.should == 2
-      html =~ %r{href="(/assets/css/app.scss.css)"}
+      html =~ %r{href="(/assets/css/app.scss)"}
       css = body($1)
-      html =~ %r{href="(/assets/css/raw.css.css)"}
+      html =~ %r{href="(/assets/css/raw.css)"}
       css2 = body($1)
       html.scan(/<script/).length.should == 1
-      html =~ %r{src="(/assets/js/head/app.coffee.js)"}
+      html =~ %r{src="(/assets/js/head/app.coffee)"}
       js = body($1)
       css.should =~ /color: red;/
       css2.should =~ /color: blue;/

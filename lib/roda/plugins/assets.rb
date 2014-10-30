@@ -189,20 +189,20 @@ class Roda
 
           if type == :js
             tag_start = "<script type=\"text/javascript\" #{attrs} src=\"/#{o[:prefix]}#{o[:"#{stype}_folder"]}/"
-            tag_end = ".#{stype}\"></script>"
+            tag_end = "\"></script>"
           else
             tag_start = "<link rel=\"stylesheet\" #{attrs} href=\"/#{o[:prefix]}#{o[:"#{stype}_folder"]}/"
-            tag_end = ".#{stype}\" />"
+            tag_end = "\" />"
           end
 
           # Create a tag for each individual file
           if o[:compiled]
             if dirs && !dirs.empty?
               key = dirs.join('.')
-              stype = "#{stype}.#{key}"
-              "#{tag_start}#{o[:compiled_name]}.#{key}.#{o[:compiled][stype]}#{tag_end}"
+              ckey = "#{stype}.#{key}"
+              "#{tag_start}#{o[:compiled_name]}.#{key}.#{o[:compiled][ckey]}.#{stype}#{tag_end}"
             else
-              "#{tag_start}#{o[:compiled_name]}.#{o[:compiled][stype]}#{tag_end}"
+              "#{tag_start}#{o[:compiled_name]}.#{o[:compiled][stype]}.#{stype}#{tag_end}"
             end
           else
             asset_folder = o[type]
@@ -216,7 +216,7 @@ class Roda
 
         def render_asset(file, type)
           if self.class.assets_opts[:compiled]
-            path = "#{self.class.assets_opts.values_at(:compiled_path, :"#{type}_folder").join('/')}/#{file}.#{type}"
+            path = "#{self.class.assets_opts.values_at(:compiled_path, :"#{type}_folder").join('/')}/#{file}"
             File.read(path)
           else
             read_asset_file file, type
@@ -238,8 +238,8 @@ class Roda
 
       module RequestClassMethods
         # The matcher for the assets route
-        def assets_matcher
-          @assets_matcher ||= [assets_regexp(:css), assets_regexp(:js)].freeze
+        def assets_matchers
+          @assets_matchers ||= [['css'.freeze, assets_regexp(:css)].freeze, ['js'.freeze, assets_regexp(:js)].freeze].freeze
         end
 
         private
@@ -248,12 +248,12 @@ class Roda
           o = roda_class.assets_opts
           assets = if compiled = o[:compiled]
             compiled.select{|k| k =~ /\A#{type}/}.map do |k, md|
-              "#{k.sub(/\A#{type}/, o[:compiled_name])}.#{md}"
+              "#{k.sub(/\A#{type}/, o[:compiled_name])}.#{md}.#{type}"
             end
           else
             unnest_assets_hash(o[type])
           end
-          /#{o[:prefix]}#{o[:"#{type}_folder"]}\/(#{Regexp.union(assets)})\.(#{type})/
+          /#{o[:prefix]}#{o[:"#{type}_folder"]}\/(#{Regexp.union(assets)})/
         end
 
         def unnest_assets_hash(h)
@@ -269,9 +269,13 @@ class Roda
       module RequestMethods
         # Handles requests for assets
         def assets
-          is self.class.assets_matcher do |file, type|
-            response.headers.merge!(self.class.roda_class.assets_opts[:"#{type}_headers"])
-            scope.render_asset(file, type)
+          if is_get?
+            self.class.assets_matchers.each do |type, matcher|
+              is matcher do |file|
+                response.headers.merge!(self.class.roda_class.assets_opts[:"#{type}_headers"])
+                scope.render_asset(file, type)
+              end
+            end
           end
         end
       end
