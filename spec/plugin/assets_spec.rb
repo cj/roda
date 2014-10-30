@@ -24,8 +24,8 @@ if run_tests
         plugin:assets,
           :css => ['app.scss', 'raw.css'],
           :js => { :head => ['app.coffee'] },
-          :path => 'spec/assets',
-          :compiled_path => 'spec/assets',
+          :path => 'spec/assets/',
+          :compiled_path => 'spec/assets/',
           :headers => {
             "Cache-Control"             => 'public, max-age=2592000, no-transform',
             'Connection'                => 'keep-alive',
@@ -46,7 +46,7 @@ if run_tests
     end
 
     it 'should contain proper configuration' do
-      app.assets_opts[:path].should == 'spec/assets'
+      app.assets_opts[:path].should == 'spec/assets/'
       app.assets_opts[:css].should include('app.scss')
     end
 
