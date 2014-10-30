@@ -208,8 +208,11 @@ class Roda
             end
           else
             asset_folder = o[type]
-            dirs.each{|f| asset_folder = asset_folder[f]} if dirs
-            asset_folder.map{|f| "#{tag_start}#{f}#{tag_end}"}.join("\n")
+            if dirs && !dirs.empty?
+              dirs.each{|f| asset_folder = asset_folder[f]}
+              prefix = "#{dirs.join('/')}/"
+            end
+            asset_folder.map{|f| "#{tag_start}#{prefix}#{f}#{tag_end}"}.join("\n")
           end
         end
 

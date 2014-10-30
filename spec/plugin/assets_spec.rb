@@ -50,21 +50,22 @@ if run_tests
       app.assets_opts[:css].should include('app.scss')
     end
 
-    it 'should serve proper assets when not compiled' do
-      body('/assets/css/app.scss.css').should include('color: red')
-      body('/assets/css/raw.css.css').should include('color: blue')
-      body('/assets/js/head/app.coffee.js').should include('console.log')
-    end
-
-    it 'should contain proper assets html tags' do
-      html = body '/test'
+    it 'should handle rendering assets, linking to them, and accepting requests for them when not compiling' do
+      html = body('/test')
       html.scan(/<link/).length.should == 2
+      html =~ %r{href="(/assets/css/app.scss.css)"}
+      css = body($1)
+      html =~ %r{href="(/assets/css/raw.css.css)"}
+      css2 = body($1)
       html.scan(/<script/).length.should == 1
-      html.should include('link')
-      html.should include('script')
+      html =~ %r{src="(/assets/js/head/app.coffee.js)"}
+      js = body($1)
+      css.should =~ /color: red;/
+      css2.should =~ /color: blue;/
+      js.should include('console.log')
     end
 
-    it 'should handle compiling assets, linking to them, and accept requests for them' do
+    it 'should handle compiling assets, linking to them, and accepting requests for them' do
       app.compile_assets
       html = body('/test')
       html.scan(/<link/).length.should == 1
