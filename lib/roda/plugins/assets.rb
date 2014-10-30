@@ -48,11 +48,11 @@ class Roda
     #
     # After calling compile_assets, calls to assets in your views will default
     # to a using a single link each to your CSS and javascript compiled asset
-    # files.  By default the compiled files are written to the public folder,
+    # files.  By default the compiled files are written to the public directory,
     # so that they can be served by the webserver.
     #
-    # :js_folder :: Folder name containing your javascript (default: 'js')
-    # :css_folder :: Folder name containing your stylesheets (default: 'css')
+    # :js_dir :: Directory name containing your javascript (default: 'js')
+    # :css_dir :: Directory name containing your stylesheets (default: 'css')
     # :path :: Path to your assets directory (default: 'assets')
     # :compiled_path :: Path to save your compiled files to (default: "public/:prefix")
     # :compiled_name :: Compiled file name (default: "app")
@@ -78,8 +78,8 @@ class Roda
         opts                   = app.opts[:assets]
         opts[:css]           ||= []
         opts[:js]            ||= []
-        opts[:js_folder]     ||= 'js'
-        opts[:css_folder]    ||= 'css'
+        opts[:js_dir]        ||= 'js'
+        opts[:css_dir]       ||= 'css'
         opts[:path]          ||= 'assets'
         opts[:compiled_name] ||= 'app'
         opts[:prefix]        ||= 'assets/'
@@ -173,7 +173,7 @@ class Roda
           suffix = ".#{dirs.join('.')}" if dirs
           key = "#{type}#{suffix}"
           unique_id = assets_opts[:compiled][key] = Digest::SHA1.hexdigest(content)
-          path = "#{assets_opts.values_at(:compiled_path, :"#{type}_folder", :compiled_name).join('/')}#{suffix}.#{unique_id}.#{type}"
+          path = "#{assets_opts.values_at(:compiled_path, :"#{type}_dir", :compiled_name).join('/')}#{suffix}.#{unique_id}.#{type}"
           File.open(path, 'wb'){|f| f.write(content)}
           nil
         end
@@ -188,10 +188,10 @@ class Roda
           stype = type.to_s
 
           if type == :js
-            tag_start = "<script type=\"text/javascript\" #{attrs} src=\"/#{o[:prefix]}#{o[:"#{stype}_folder"]}/"
+            tag_start = "<script type=\"text/javascript\" #{attrs} src=\"/#{o[:prefix]}#{o[:"#{stype}_dir"]}/"
             tag_end = "\"></script>"
           else
-            tag_start = "<link rel=\"stylesheet\" #{attrs} href=\"/#{o[:prefix]}#{o[:"#{stype}_folder"]}/"
+            tag_start = "<link rel=\"stylesheet\" #{attrs} href=\"/#{o[:prefix]}#{o[:"#{stype}_dir"]}/"
             tag_end = "\" />"
           end
 
@@ -205,18 +205,18 @@ class Roda
               "#{tag_start}#{o[:compiled_name]}.#{o[:compiled][stype]}.#{stype}#{tag_end}"
             end
           else
-            asset_folder = o[type]
+            asset_dir = o[type]
             if dirs && !dirs.empty?
-              dirs.each{|f| asset_folder = asset_folder[f]}
+              dirs.each{|f| asset_dir = asset_dir[f]}
               prefix = "#{dirs.join('/')}/"
             end
-            asset_folder.map{|f| "#{tag_start}#{prefix}#{f}#{tag_end}"}.join("\n")
+            asset_dir.map{|f| "#{tag_start}#{prefix}#{f}#{tag_end}"}.join("\n")
           end
         end
 
         def render_asset(file, type)
           if self.class.assets_opts[:compiled]
-            path = "#{self.class.assets_opts.values_at(:compiled_path, :"#{type}_folder").join('/')}/#{file}"
+            path = "#{self.class.assets_opts.values_at(:compiled_path, :"#{type}_dir").join('/')}/#{file}"
             File.read(path)
           else
             read_asset_file file, type
@@ -225,8 +225,8 @@ class Roda
 
         def read_asset_file(file, type)
           o = self.class.assets_opts
-          folder = o[:"#{type}_folder"]
-          file = "#{o[:path]}/#{folder}/#{file}"
+          dir = o[:"#{type}_dir"]
+          file = "#{o[:path]}/#{dir}/#{file}"
 
           if file.end_with?(".#{type}")
             File.read(file)
@@ -253,7 +253,7 @@ class Roda
           else
             unnest_assets_hash(o[type])
           end
-          /#{o[:prefix]}#{o[:"#{type}_folder"]}\/(#{Regexp.union(assets)})/
+          /#{o[:prefix]}#{o[:"#{type}_dir"]}\/(#{Regexp.union(assets)})/
         end
 
         def unnest_assets_hash(h)
