@@ -21,7 +21,9 @@ if run_tests
   describe 'assets plugin' do
     before do
       app(:bare) do
-        plugin(:assets, {
+        plugin:assets,
+          :css => ['app.scss', '../raw.css'],
+          :js => { :head => ['app.coffee'] },
           :path => './spec/dummy/assets',
           :compiled_path => './spec/dummy/assets',
           :headers => {
@@ -31,10 +33,6 @@ if run_tests
             'Strict-Transport-Security' => 'max-age=31536000',
             'Content-Disposition'       => 'inline'
           }
-        })
-
-        assets_opts[:css] = ['app', '../raw.css']
-        assets_opts[:js]  = { :head => ['app'] }
 
         route do |r|
           r.assets
@@ -49,13 +47,12 @@ if run_tests
 
     it 'should contain proper configuration' do
       app.assets_opts[:path].should == './spec/dummy/assets'
-      app.assets_opts[:css].should include('app')
+      app.assets_opts[:css].should include('app.scss')
     end
 
-    it 'should serve proper assets' do
-      body('/assets/css/app.css').should include('color: red')
-      # body('/assets/css/%242E%242E/raw.css').should include('color: blue')
-      # body('/assets/js/head/app.js').should include('console.log')
+    it 'should serve proper assets when not compiled' do
+      body('/assets/css/app.scss.css').should include('color: red')
+      body('/assets/js/head/app.coffee.js').should include('console.log')
     end
 
     it 'should contain proper assets html tags' do

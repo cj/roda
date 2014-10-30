@@ -7,11 +7,7 @@ class Roda
     # When loading the plugin, use the :css and :js options
     # to set the source file(s) to use for CSS and javascript assets:
     #
-    #   plugin :assets, :css => 'some_file', :js => 'some_file'
-    #
-    # By default, the plugin assumes coffeescript source for javascript files,
-    # and SCSS source for CSS files.  You can override those choices using the
-    # :css_engine and :js_engine options.
+    #   plugin :assets, :css => 'some_file.scss', :js => 'some_file.coffee'
     #
     # In your routes, call the r.assets method to add a route to your assets:
     #
@@ -30,7 +26,8 @@ class Roda
     #   <%= assets(:css, :media => 'print') %>
     #
     # Assets also supports groups incase you have different css/js files for
-    # your front end and back end.  To do this you'd simply do:
+    # your front end and back end.  To do this you pass a hash for the :css
+    # and :js options:
     #
     #   plugin :assets, :css => {:frontend => 'some_frontend_file',
     #                            :backend => 'some_backend_file'}
@@ -39,11 +36,14 @@ class Roda
     #
     #   <%= assets([:css, :frontend]) %>
     #
+    # Hashes can also supporting nesting, though that should only be needed
+    # in fairly large applications.
+    #
     # In production, you are generally going to want to compile your assets
     # into a single file, with you can do by calling compile_assets after
     # loading the plugin:
     #
-    #   plugin :assets, :css => 'some_file', :js => 'some_file'
+    #   plugin :assets, :css => 'some_file.scss', :js => 'some_file.coffee'
     #   compile_assets
     #
     # After calling compile_assets, calls to assets in your views will default
@@ -51,17 +51,12 @@ class Roda
     # files.  By default the compiled files are written to the public folder,
     # so that they can be served by the webserver.
     #
-    # You can provide options to the plugin method, or later by modifying
-    # +assets_opts+.
-    #
     # :js_folder :: Folder name containing your javascript (default: 'js')
     # :css_folder :: Folder name containing your stylesheets (default: 'css')
     # :path :: Path to your assets directory (default: 'assets')
     # :compiled_path :: Path to save your compiled files to (default: "public/:prefix")
     # :compiled_name :: Compiled file name (default: "app")
     # :prefix :: prefix for assets path, including trailing slash if not empty (default: 'assets/')
-    # :css_engine :: default engine to use for css (default: 'scss')
-    # :js_engine :: default engine to use for js (default: 'coffee')
     # :concat_only :: whether to just concatenate instead of concatentating
     #                 and compressing files (default: false)
     # :compiled :: A hash mapping asset identifiers to the unique id for the compiled asset file
@@ -69,7 +64,7 @@ class Roda
     # :css_headers :: Add additional headers to your css rendered files
     # :js_headers :: Add additional headers to your js rendered files
     module Assets
-      def self.load_dependencies(app, _opts)
+      def self.load_dependencies(app, _opts = {})
         app.plugin :render
       end
 
@@ -85,12 +80,10 @@ class Roda
         opts[:js]            ||= []
         opts[:js_folder]     ||= 'js'
         opts[:css_folder]    ||= 'css'
-        opts[:path]          ||= File.expand_path('assets', Dir.pwd)
+        opts[:path]          ||= 'assets'
         opts[:compiled_name] ||= 'app'
         opts[:prefix]        ||= 'assets/'
         opts[:compiled_path] ||= "public/#{opts[:prefix]}"
-        opts[:css_engine]    ||= 'scss'
-        opts[:js_engine]     ||= 'coffee'
         opts[:concat_only]     = false unless opts.has_key?(:concat_only)
         opts[:compiled]        = false unless opts.has_key?(:compiled)
 
@@ -231,17 +224,10 @@ class Roda
 
         def read_asset_file(file, type)
           o = self.class.assets_opts
-          engine = o[:"#{type}_engine"]
           folder = o[:"#{type}_folder"]
           file = "#{o[:path]}/#{folder}/#{file}"
 
-          if File.exist?(path = "#{file}.#{engine}")
-            # render via tilt
-            render(:path => path)
-          elsif File.exist?(path = "#{file}.#{type}")
-            # read file directly
-            File.read(path)
-          elsif file =~ /\.#{type}\z/
+          if file.end_with?(".#{type}")
             File.read(file)
           else
             render(:path => file)
