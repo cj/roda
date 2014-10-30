@@ -51,14 +51,18 @@ class Roda
     # files.  By default the compiled files are written to the public directory,
     # so that they can be served by the webserver.
     #
-    # :js_dir :: Directory name containing your javascript, including trailing
+    # :js_dir :: Directory name containing your javascript source, including trailing
     #            slash if not empty (default: 'js/')
-    # :css_dir :: Directory name containing your stylesheets, including
+    # :css_dir :: Directory name containing your css source, including
     #            trailing slash if not empty (default: 'css/')
     # :path :: Path to your assets directory, including trailing slash if not
     #          empty (default: 'assets/')
     # :compiled_path :: Path to save your compiled files to (default: "public/:prefix")
-    # :compiled_name :: Compiled file name (default: "app")
+    # :compiled_name :: Compiled file name prefix (default: "app")
+    # :compiled_js_dir :: Directory name in which to store the compiled javascript file,
+    #                     including slash if not empty (default: :js_dir)
+    # :compiled_css_dir :: Directory name in which to store the compiled javascript file,
+    #                     including slash if not empty (default: :css_dir)
     # :prefix :: prefix for assets path, including trailing slash if not empty (default: 'assets/')
     # :concat_only :: whether to just concatenate instead of concatentating
     #                 and compressing files (default: false)
@@ -78,26 +82,37 @@ class Roda
           app.opts[:assets] = opts.dup
         end
 
-        opts                   = app.opts[:assets]
-        opts[:css]           ||= []
-        opts[:js]            ||= []
-        opts[:js_dir]        ||= 'js/'
-        opts[:css_dir]       ||= 'css/'
-        opts[:path]          ||= 'assets/'
-        opts[:compiled_name] ||= 'app'
-        opts[:prefix]        ||= 'assets/'
-        opts[:compiled_path] ||= "public/#{opts[:prefix]}"
-        opts[:concat_only]     = false unless opts.has_key?(:concat_only)
-        opts[:compiled]        = false unless opts.has_key?(:compiled)
+        opts                      = app.opts[:assets]
+        opts[:css]              ||= []
+        opts[:js]               ||= []
+        opts[:js_dir]           ||= 'js/'
+        opts[:css_dir]          ||= 'css/'
+        opts[:compiled_js_dir]  ||= opts[:js_dir]
+        opts[:compiled_css_dir] ||= opts[:css_dir]
+        opts[:path]             ||= 'assets/'
+        opts[:compiled_name]    ||= 'app'
+        opts[:prefix]           ||= 'assets/'
+        opts[:compiled_path]    ||= "public/#{opts[:prefix]}"
+        opts[:concat_only]        = false unless opts.has_key?(:concat_only)
+        opts[:compiled]           = false unless opts.has_key?(:compiled)
 
-        opts[:css_headers]   ||= {} 
-        opts[:js_headers]    ||= {} 
+        opts[:css_headers]      ||= {} 
+        opts[:js_headers]       ||= {} 
         if headers = opts[:headers]
-          opts[:css_headers] ||= headers.merge(opts[:css_headers])
-          opts[:js_headers]  ||= headers.merge(opts[:js_headers])
+          opts[:css_headers]    ||= headers.merge(opts[:css_headers])
+          opts[:js_headers]     ||= headers.merge(opts[:js_headers])
         end
         opts[:css_headers]['Content-Type'] ||= "text/css; charset=UTF-8"
         opts[:js_headers]['Content-Type']  ||= "application/javascript; charset=UTF-8"
+
+        opts[:compiled_js_path] = "#{opts[:compiled_path]}#{opts[:compiled_js_dir]}#{opts[:compiled_name]}"
+        opts[:compiled_css_path] = "#{opts[:compiled_path]}#{opts[:compiled_css_dir]}#{opts[:compiled_name]}"
+        opts[:compiled_js_prefix] = "#{opts[:prefix]}#{opts[:compiled_js_dir]}#{opts[:compiled_name]}"
+        opts[:compiled_css_prefix] = "#{opts[:prefix]}#{opts[:compiled_css_dir]}#{opts[:compiled_name]}"
+        opts[:js_prefix] = "#{opts[:prefix]}#{opts[:js_dir]}"
+        opts[:css_prefix] = "#{opts[:prefix]}#{opts[:css_dir]}"
+        opts[:js_path] = "#{opts[:path]}#{opts[:js_dir]}"
+        opts[:css_path] = "#{opts[:path]}#{opts[:css_dir]}"
 
         if opts.fetch(:cache, true)
           opts[:cache] = app.thread_safe_cache
@@ -177,7 +192,7 @@ class Roda
           suffix = ".#{dirs.join('.')}" if dirs
           key = "#{type}#{suffix}"
           unique_id = o[:compiled][key] = Digest::SHA1.hexdigest(content)
-          path = "#{o.values_at(:compiled_path, :"#{type}_dir", :compiled_name).join}#{suffix}.#{unique_id}.#{type}"
+          path = "#{o[:"compiled_#{type}_path"]}#{suffix}.#{unique_id}.#{type}"
           File.open(path, 'wb'){|f| f.write(content)}
           nil
         end
@@ -192,10 +207,10 @@ class Roda
           stype = type.to_s
 
           if type == :js
-            tag_start = "<script type=\"text/javascript\" #{attrs} src=\"/#{o[:prefix]}#{o[:"#{stype}_dir"]}"
+            tag_start = "<script type=\"text/javascript\" #{attrs} src=\"/"
             tag_end = "\"></script>"
           else
-            tag_start = "<link rel=\"stylesheet\" #{attrs} href=\"/#{o[:prefix]}#{o[:"#{stype}_dir"]}"
+            tag_start = "<link rel=\"stylesheet\" #{attrs} href=\"/"
             tag_end = "\" />"
           end
 
@@ -204,9 +219,9 @@ class Roda
             if dirs && !dirs.empty?
               key = dirs.join('.')
               ckey = "#{stype}.#{key}"
-              "#{tag_start}#{o[:compiled_name]}.#{key}.#{o[:compiled][ckey]}.#{stype}#{tag_end}"
+              "#{tag_start}#{o[:"compiled_#{stype}_prefix"]}.#{key}.#{o[:compiled][ckey]}.#{stype}#{tag_end}"
             else
-              "#{tag_start}#{o[:compiled_name]}.#{o[:compiled][stype]}.#{stype}#{tag_end}"
+              "#{tag_start}#{o[:"compiled_#{stype}_prefix"]}.#{o[:compiled][stype]}.#{stype}#{tag_end}"
             end
           else
             asset_dir = o[type]
@@ -214,22 +229,22 @@ class Roda
               dirs.each{|f| asset_dir = asset_dir[f]}
               prefix = "#{dirs.join('/')}/"
             end
-            asset_dir.map{|f| "#{tag_start}#{prefix}#{f}#{tag_end}"}.join("\n")
+            asset_dir.map{|f| "#{tag_start}#{o[:"#{stype}_prefix"]}#{prefix}#{f}#{tag_end}"}.join("\n")
           end
         end
 
         def render_asset(file, type)
           if self.class.assets_opts[:compiled]
-            path = "#{self.class.assets_opts.values_at(:compiled_path, :"#{type}_dir").join}#{file}"
+            path = "#{self.class.assets_opts[:"compiled_#{type}_path"]}#{file}"
             File.read(path)
           else
-            read_asset_file file, type
+            read_asset_file(file, type)
           end
         end
 
         def read_asset_file(file, type)
           o = self.class.assets_opts
-          file = "#{o[:path]}#{o[:"#{type}_dir"]}#{file}"
+          file = "#{o[:"#{type}_path"]}#{file}"
 
           if file.end_with?(".#{type}")
             File.read(file)
@@ -249,14 +264,16 @@ class Roda
 
         def assets_regexp(type)
           o = roda_class.assets_opts
-          assets = if compiled = o[:compiled]
-            compiled.select{|k| k =~ /\A#{type}/}.map do |k, md|
-              "#{k.sub(/\A#{type}/, o[:compiled_name])}.#{md}.#{type}"
+          if compiled = o[:compiled]
+            key = :"compiled_#{type}_prefix"
+            assets = compiled.select{|k| k =~ /\A#{type}/}.map do |k, md|
+              "#{k.sub(/\A#{type}/, '')}.#{md}.#{type}"
             end
           else
-            unnest_assets_hash(o[type])
+            key = :"#{type}_prefix"
+            assets = unnest_assets_hash(o[type])
           end
-          /#{o[:prefix]}#{o[:"#{type}_dir"]}(#{Regexp.union(assets)})/
+          /#{o[key]}(#{Regexp.union(assets)})/
         end
 
         def unnest_assets_hash(h)
