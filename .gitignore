@@ -4,7 +4,5 @@
 /www/public/*.html
 /www/public/rdoc/
 /.sass-cache/
-/spec/dummy/assets/css/app.*.css
-/spec/dummy/assets/js/app.head.*.js
-/spec/dummy/assets/css/compiled.*.css
-/spec/dummy/assets/js/compiled.*.js
+/spec/assets/css/app.*.css
+/spec/assets/js/app.head.*.js

@@ -22,10 +22,10 @@ if run_tests
     before do
       app(:bare) do
         plugin:assets,
-          :css => ['app.scss', '../raw.css'],
+          :css => ['app.scss', 'raw.css'],
           :js => { :head => ['app.coffee'] },
-          :path => './spec/dummy/assets',
-          :compiled_path => './spec/dummy/assets',
+          :path => 'spec/assets',
+          :compiled_path => 'spec/assets',
           :headers => {
             "Cache-Control"             => 'public, max-age=2592000, no-transform',
             'Connection'                => 'keep-alive',
@@ -46,12 +46,13 @@ if run_tests
     end
 
     it 'should contain proper configuration' do
-      app.assets_opts[:path].should == './spec/dummy/assets'
+      app.assets_opts[:path].should == 'spec/assets'
       app.assets_opts[:css].should include('app.scss')
     end
 
     it 'should serve proper assets when not compiled' do
       body('/assets/css/app.scss.css').should include('color: red')
+      body('/assets/css/raw.css.css').should include('color: blue')
       body('/assets/js/head/app.coffee.js').should include('console.log')
     end
 
@@ -78,7 +79,7 @@ if run_tests
     end
 
     it 'should only allow files in your list' do
-      body('/assets/css/%242E%242E/%242E%242E/no_access.css').should_not include('no access')
+      status('/assets/css/no_access.css.css').should == 404
     end
   end
 end
