@@ -29,8 +29,8 @@ class Roda
     # your front end and back end.  To do this you pass a hash for the :css
     # and :js options:
     #
-    #   plugin :assets, :css => {:frontend => 'some_frontend_file',
-    #                            :backend => 'some_backend_file'}
+    #   plugin :assets, :css => {:frontend => 'some_frontend_file.scss',
+    #                            :backend => 'some_backend_file.scss'}
     #
     # Then in your view code use an array argument in your call to assets:
     #
@@ -100,8 +100,6 @@ class Roda
           opts[:cache] = app.thread_safe_cache
         end
       end
-
-      # need to flattern js/css opts
 
       module ClassMethods
         # Copy the assets options into the subclass, duping
