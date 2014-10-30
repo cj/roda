@@ -51,25 +51,24 @@ class Roda
     # files.  By default the compiled files are written to the public directory,
     # so that they can be served by the webserver.
     #
-    # :js_dir :: Directory name containing your javascript source, including trailing
-    #            slash if not empty (default: 'js/')
-    # :css_dir :: Directory name containing your css source, including
-    #            trailing slash if not empty (default: 'css/')
-    # :path :: Path to your assets directory, including trailing slash if not
-    #          empty (default: 'assets/')
-    # :compiled_path :: Path to save your compiled files to (default: "public/:prefix")
-    # :compiled_name :: Compiled file name prefix (default: "app")
+    # :prefix :: prefix for assets path in your URL/routes (default: 'assets')
+    # :path :: Path to your asset source directory (default: 'assets')
+    # :public :: Path to your public folder, in which compiled files are placed (default: 'public')
+    # :compiled_path :: Path to save your compiled files to (default: :public/:prefix)
+    # :compiled_name :: Compiled file name prefix (default: 'app')
+    # :css_dir :: Directory name containing your css source, inside :path (default: 'css')
+    # :js_dir :: Directory name containing your javascript source, inside :path (default: 'js')
+    # :compiled_css_dir :: Directory name in which to store the compiled css file,
+    #                      inside :compiled_path (default: :css_dir)
     # :compiled_js_dir :: Directory name in which to store the compiled javascript file,
-    #                     including slash if not empty (default: :js_dir)
-    # :compiled_css_dir :: Directory name in which to store the compiled javascript file,
-    #                     including slash if not empty (default: :css_dir)
-    # :prefix :: prefix for assets path, including trailing slash if not empty (default: 'assets/')
+    #                     inside :compiled_path (default: :js_dir)
     # :concat_only :: whether to just concatenate instead of concatentating
     #                 and compressing files (default: false)
-    # :compiled :: A hash mapping asset identifiers to the unique id for the compiled asset file
-    # :headers :: Add additional headers to both js and css rendered files
-    # :css_headers :: Add additional headers to your css rendered files
-    # :js_headers :: Add additional headers to your js rendered files
+    # :compiled :: A hash mapping asset identifiers to the unique id for the compiled asset file,
+    #              used when precompilng your assets before application startup
+    # :headers :: A hash of additional headers for both js and css rendered files
+    # :css_headers :: A hash of additional headers for your rendered css files
+    # :js_headers :: A hash of additional headers for your rendered javascript files
     module Assets
       def self.load_dependencies(app, _opts = {})
         app.plugin :render
@@ -81,38 +80,60 @@ class Roda
         else
           app.opts[:assets] = opts.dup
         end
+        opts = app.opts[:assets]
 
-        opts                      = app.opts[:assets]
-        opts[:css]              ||= []
-        opts[:js]               ||= []
-        opts[:js_dir]           ||= 'js/'
-        opts[:css_dir]          ||= 'css/'
-        opts[:compiled_js_dir]  ||= opts[:js_dir]
-        opts[:compiled_css_dir] ||= opts[:css_dir]
-        opts[:path]             ||= 'assets/'
-        opts[:compiled_name]    ||= 'app'
-        opts[:prefix]           ||= 'assets/'
-        opts[:compiled_path]    ||= "public/#{opts[:prefix]}"
-        opts[:concat_only]        = false unless opts.has_key?(:concat_only)
-        opts[:compiled]           = false unless opts.has_key?(:compiled)
+        # Combine multiple values into a path, ignoring trailing slashes
+        j = lambda do |*v|
+          opts.values_at(*v).
+            reject{|s| s.to_s.empty?}.
+            map{|s| s.chomp('/')}.
+            join('/')
+        end
 
-        opts[:css_headers]      ||= {} 
-        opts[:js_headers]       ||= {} 
+        # Same as j, but add a trailing slash if not empty
+        sj = lambda do |*v|
+          s = j.call(*v)
+          s << '/' unless s.empty?
+          s
+        end
+
+        opts[:compiled_name] ||= 'app'
+        opts[:css]           ||= []
+        opts[:js]            ||= []
+        opts[:css_headers]   ||= {} 
+        opts[:js_headers]    ||= {} 
+
+        opts[:js_dir]           = 'js' unless opts.has_key?(:js_dir)
+        opts[:css_dir]          = 'css' unless opts.has_key?(:css_dir)
+        opts[:compiled_js_dir]  = opts[:js_dir] unless opts.has_key?(:compiled_js_dir)
+        opts[:compiled_css_dir] = opts[:css_dir] unless opts.has_key?(:compiled_css_dir)
+
+        opts[:path]   = 'assets' unless opts.has_key?(:path)
+        opts[:prefix] = 'assets' unless opts.has_key?(:prefix)
+        opts[:public] = 'public' unless opts.has_key?(:public)
+
+        opts[:compiled_path] = sj.call(:public, :prefix) unless opts.has_key?(:compiled_path)
+        opts[:concat_only]   = false unless opts.has_key?(:concat_only)
+        opts[:compiled]      = false unless opts.has_key?(:compiled)
+
         if headers = opts[:headers]
-          opts[:css_headers]    ||= headers.merge(opts[:css_headers])
-          opts[:js_headers]     ||= headers.merge(opts[:js_headers])
+          opts[:css_headers] = headers.merge(opts[:css_headers])
+          opts[:js_headers]  = headers.merge(opts[:js_headers])
         end
         opts[:css_headers]['Content-Type'] ||= "text/css; charset=UTF-8"
         opts[:js_headers]['Content-Type']  ||= "application/javascript; charset=UTF-8"
 
-        opts[:compiled_js_path] = "#{opts[:compiled_path]}#{opts[:compiled_js_dir]}#{opts[:compiled_name]}"
-        opts[:compiled_css_path] = "#{opts[:compiled_path]}#{opts[:compiled_css_dir]}#{opts[:compiled_name]}"
-        opts[:compiled_js_prefix] = "#{opts[:prefix]}#{opts[:compiled_js_dir]}#{opts[:compiled_name]}"
-        opts[:compiled_css_prefix] = "#{opts[:prefix]}#{opts[:compiled_css_dir]}#{opts[:compiled_name]}"
-        opts[:js_prefix] = "#{opts[:prefix]}#{opts[:js_dir]}"
-        opts[:css_prefix] = "#{opts[:prefix]}#{opts[:css_dir]}"
-        opts[:js_path] = "#{opts[:path]}#{opts[:js_dir]}"
-        opts[:css_path] = "#{opts[:path]}#{opts[:css_dir]}"
+        # Used for reading/writing files
+        opts[:js_path]           = sj.call(:path, :compiled_js_dir)
+        opts[:css_path]          = sj.call(:path, :compiled_css_dir)
+        opts[:compiled_js_path]  = j.call(:compiled_path, :compiled_js_dir, :compiled_name)
+        opts[:compiled_css_path] = j.call(:compiled_path, :compiled_css_dir, :compiled_name)
+
+        # Used for URLs/routes
+        opts[:js_prefix]           = sj.call(:prefix, :compiled_js_dir)
+        opts[:css_prefix]          = sj.call(:prefix, :compiled_css_dir)
+        opts[:compiled_js_prefix]  = j.call(:prefix, :compiled_js_dir, :compiled_name)
+        opts[:compiled_css_prefix] = j.call(:prefix, :compiled_css_dir, :compiled_name)
 
         if opts.fetch(:cache, true)
           opts[:cache] = app.thread_safe_cache

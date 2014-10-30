@@ -21,11 +21,11 @@ if run_tests
   describe 'assets plugin' do
     before do
       app(:bare) do
-        plugin:assets,
+        plugin :assets,
           :css => ['app.scss', 'raw.css'],
           :js => { :head => ['app.coffee'] },
-          :path => 'spec/assets/',
-          :compiled_path => 'spec/assets/',
+          :path => 'spec/assets',
+          :public => 'spec',
           :headers => {
             "Cache-Control"             => 'public, max-age=2592000, no-transform',
             'Connection'                => 'keep-alive',
@@ -46,19 +46,19 @@ if run_tests
     end
 
     it 'should contain proper configuration' do
-      app.assets_opts[:path].should == 'spec/assets/'
+      app.assets_opts[:path].should == 'spec/assets'
       app.assets_opts[:css].should include('app.scss')
     end
 
     it 'should handle rendering assets, linking to them, and accepting requests for them when not compiling' do
       html = body('/test')
       html.scan(/<link/).length.should == 2
-      html =~ %r{href="(/assets/css/app.scss)"}
+      html =~ %r{href="(/assets/css/app\.scss)"}
       css = body($1)
-      html =~ %r{href="(/assets/css/raw.css)"}
+      html =~ %r{href="(/assets/css/raw\.css)"}
       css2 = body($1)
       html.scan(/<script/).length.should == 1
-      html =~ %r{src="(/assets/js/head/app.coffee)"}
+      html =~ %r{src="(/assets/js/head/app\.coffee)"}
       js = body($1)
       css.should =~ /color: red;/
       css2.should =~ /color: blue;/
