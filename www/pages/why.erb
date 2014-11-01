@@ -30,7 +30,7 @@ class App &lt; Roda
       end
 
       r.post do
-        @artist.update(params[:artist])
+        @artist.update(r['artist'])
         r.redirect
       end
 
@@ -84,7 +84,7 @@ end
 
 <h3>Plugin System</h3>
 
-<p>Another difference between Roda and Sinatra is that Roda has a plugin system modeled on <a href="http://sequel.jeremyevans.net">Sequel</a>'s.  All parts of Roda (class/instance/request/response) can be overridden by plugins and call super to get the default behavior.  This includes when plugins are applied to the Roda class itself (affecting all subclasses).  Roda has a very small core, and many features that are built into Sinatra are shipped as plugins in Roda. This way they can easily be used if needed, but if you don't use them you don't pay the cost for loading them.  Near the top of the Roda example, you can see <span class="code">plugin :render</span>, which adds support for template rendering, as the default Roda code doesn't ship with template support.</p>
+<p>Another difference between Roda and Sinatra is that Roda has a plugin system modeled on <a href="http://sequel.jeremyevans.net">Sequel</a>'s.  All parts of Roda (class/instance/request/response) can be overridden by plugins and call super to get the default behavior.  This includes when plugins are applied to the Roda class itself (affecting all subclasses).  Roda has a very small core, and many features that are built into Sinatra are shipped as plugins in Roda. This way they can easily be used if needed, but if you don't use them you don't pay the cost for loading them.  Near the top of the Roda example, you can see <span class="code">plugin :render</span>, which adds support for template rendering, and <span class="code">plugin :all_verbs</span>, which adds routing methods for all HTTP request methods.
 
 <h3>Less Pollution</h3>
 

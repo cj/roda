@@ -30,9 +30,9 @@ class Roda
         def indifferent_params(params)
           case params 
           when Hash
-            h = Hash.new{|h, k| h[k.to_s] if Symbol === k}
-            params.each{|k, v| h[k] = indifferent_params(v)}
-            h
+            hash = Hash.new{|h, k| h[k.to_s] if Symbol === k}
+            params.each{|k, v| hash[k] = indifferent_params(v)}
+            hash
           when Array
             params.map{|x| indifferent_params(x)}
           else

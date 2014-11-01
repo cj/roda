@@ -23,12 +23,16 @@ describe "symbol_matchers plugin" do
           "format#{f.inspect}"
         end
 
+        r.is "thing/:thing" do |d|
+          "thing#{d}"
+        end
+
         r.is :f do |f|
           "f#{f}"
         end
 
-        r.is 'q:rest' do |r|
-          "rest#{r}"
+        r.is 'q:rest' do |rest|
+          "rest#{rest}"
         end
 
         r.is :w do |w|
@@ -64,5 +68,6 @@ describe "symbol_matchers plugin" do
     status("/1/f/a").should == 404
     body("/qa/b/c/d//f/g").should == 'resta/b/c/d//f/g'
     body('/q').should == 'rest'
+    body('/thing/q').should == 'thingq'
   end
 end

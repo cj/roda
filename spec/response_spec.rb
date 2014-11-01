@@ -67,6 +67,16 @@ describe "response #finish" do
     body.should == 'a200text/html1'
   end
 
+  it "should set Content-Length header" do
+    app do |r|
+      response.write 'a'
+      response['Content-Length'].should == nil
+      throw :halt, response.finish
+    end
+
+    header('Content-Length').should == '1'
+  end
+
   it "should not overwrite existing status" do
     app do |r|
       response.status = 500
@@ -75,6 +85,43 @@ describe "response #finish" do
     end
 
     body.should == '500text/html0'
+  end
+end
+
+describe "response #finish_with_body" do
+  it "should use given body" do
+    app do |r|
+      throw :halt, response.finish_with_body(['123'])
+    end
+
+    body.should == '123'
+  end
+
+  it "should set status to 200 if status has not been set" do
+    app do |r|
+      throw :halt, response.finish_with_body([])
+    end
+
+    status.should == 200
+  end
+
+  it "should not set Content-Length header" do
+    app do |r|
+      response.write 'a'
+      response['Content-Length'].should == nil
+      throw :halt, response.finish_with_body(['123'])
+    end
+
+    header('Content-Length').should == nil
+  end
+
+  it "should not overwrite existing status" do
+    app do |r|
+      response.status = 500
+      throw :halt, response.finish_with_body(['123'])
+    end
+
+    status.should == 500
   end
 end
 

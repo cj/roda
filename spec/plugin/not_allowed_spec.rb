@@ -19,14 +19,22 @@ describe "not_allowed plugin" do
         "c"
       end
 
+      r.on "q" do
+        r.is do
+          r.get do
+            "q"
+          end
+        end
+      end
+
       r.get do
         r.is 'b' do
           'b'
         end
-        r.is /(d)/ do |s|
+        r.is(/(d)/) do |s|
           s
         end
-        r.get /(e)/ do |s|
+        r.get(/(e)/) do |s|
           s
         end
       end
@@ -43,7 +51,10 @@ describe "not_allowed plugin" do
     status('/d', 'REQUEST_METHOD'=>'POST').should == 404
 
     body('/e').should == 'e'
-    status('/d', 'REQUEST_METHOD'=>'POST').should == 404
+    status('/e', 'REQUEST_METHOD'=>'POST').should == 404
+
+    body('/q').should == 'q'
+    status('/q', 'REQUEST_METHOD'=>'POST').should == 405
 
     body('/c').should == 'cg'
     body('/c').should == 'cg'

@@ -1,5 +1,21 @@
 = HEAD
 
+* Make response.finish add the Content-Length header, not response.write (jeremyevans)
+
+* Add response.finish_with_body to override response body used (jeremyevans)
+
+* Use allocate instead of new in rack app (jeremyevans)
+
+* Add chunked plugin, for easy streaming of template responses using Transfer-Encoding: chunked (jeremyevans)
+
+* Add namespace support to the multi_route plugin, to support more complex applications (jeremyevans)
+
+* Make r.multi_route use named route return value if not passed a block (jeremyevans)
+
+* Make r.multi_route prefer longer route if multiple routes have the same prefix (jeremyevans)
+
+* Add caching plugin, for handling http caching (jeremyevans)
+
 * Support adding middleware after the route block has been added (jeremyevans)
 
 * Allow Roda subclasses to use route block from superclass (jeremyevans)

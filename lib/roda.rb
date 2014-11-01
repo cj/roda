@@ -10,6 +10,7 @@ class Roda
   class RodaError < StandardError; end
 
   if defined?(RUBY_ENGINE) && RUBY_ENGINE != 'ruby'
+  # :nocov:
     # A thread safe cache class, offering only #[] and #[]= methods,
     # each protected by a mutex.  Used on non-MRI where Hash is not
     # thread safe.
@@ -30,6 +31,7 @@ class Roda
         @mutex.synchronize{@hash[key] = value}
       end
     end
+  # :nocov:
   else
     # Hashes are already thread-safe in MRI, due to the GVL, so they
     # can safely be used as a cache.
@@ -262,7 +264,7 @@ class Roda
           if block = @route_block
             builder = Rack::Builder.new
             @middleware.each{|a, b| builder.use(*a, &b)}
-            builder.run lambda{|env| new.call(env, &block)}
+            builder.run lambda{|env| allocate.call(env, &block)}
             @app = builder.to_app
           end
         end
@@ -281,7 +283,9 @@ class Roda
             raise RodaError, "can't provide both argument and block to response_module" if block_given?
             klass.send(:include, mod)
           else
-            unless mod = instance_variable_get(iv)
+            if instance_variable_defined?(iv)
+              mod = instance_variable_get(iv)
+            else
               mod = instance_variable_set(iv, Module.new)
               klass.send(:include, mod)
             end
@@ -941,13 +945,31 @@ class Roda
         end
 
         # Return the rack response array of status, headers, and body
-        # for the current response. Example:
+        # for the current response.  If the status has not been set,
+        # uses a 200 status if the body has been written to, otherwise
+        # uses a 404 status.  Adds the Content-Length header to the
+        # size of the response body.
         #
-        #   response.finish # => [200, {'Content-Type'=>'text/html'}, []]
+        # Example:
+        #
+        #   response.finish
+        #   #  => [200,
+        #   #      {'Content-Type'=>'text/html', 'Content-Length'=>'0'},
+        #   #      []]
         def finish
           b = @body
           s = (@status ||= b.empty? ? 404 : 200)
-          [s, @headers, b]
+          h = @headers
+          h[CONTENT_LENGTH] = @length.to_s
+          [s, h, b]
+        end
+
+        # Return the rack response array using a given body.  Assumes a
+        # 200 response status unless status has been explicitly set,
+        # and doesn't add the Content-Length header or use the existing
+        # body.
+        def finish_with_body(body)
+          [@status || 200, @headers, body]
         end
 
         # Set the Location header to the given path, and the status
@@ -968,16 +990,12 @@ class Roda
           ::Rack::Utils.set_cookie_header!(@headers, key, value)
         end
 
-        # Write to the response body.  Updates Content-Length header
-        # with the size of the string written.  Returns nil. Example:
+        # Write to the response body.  Returns nil.
         #
         #   response.write('foo')
-        #   response['Content-Length'] # =>'3'
         def write(str)
           s = str.to_s
-
           @length += s.bytesize
-          @headers[CONTENT_LENGTH] = @length.to_s
           @body << s
           nil
         end

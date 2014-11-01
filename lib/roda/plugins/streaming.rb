@@ -154,8 +154,7 @@ class Roda
             end
           end
 
-          res = response
-          request.halt [res.status || 200, res.headers, Stream.new(opts, &block)]
+          throw :halt, response.finish_with_body(Stream.new(opts, &block))
         end
       end
     end

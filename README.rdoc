@@ -787,6 +787,9 @@ These plugins ship with roda:
 all_verbs :: Adds routing methods to the request for all http verbs.
 backtracking_array :: Allows array matchers to backtrack if later matchers
                       do not match.
+caching :: Adds request and response methods related to http caching.
+chunked :: Adds support for streaming template responses using
+           Transfer-Encoding: chunked.
 content_for :: Allows storage of content in one template and retrieval of
                that content in a different template.
 csrf :: Adds CSRF protection and helper methods using

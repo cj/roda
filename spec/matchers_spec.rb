@@ -104,7 +104,7 @@ describe "r.is" do
 
   it "matches regexps" do
     app do |r|
-      r.is /(\w+)/ do |id|
+      r.is(/(\w+)/) do |id|
         id
       end
     end
@@ -458,7 +458,7 @@ describe "path matchers" do
 
   it "a path with some regex captures" do
     app do |r|
-      r.on /user(\d+)/ do |uid|
+      r.on(/user(\d+)/) do |uid|
         uid
       end
     end

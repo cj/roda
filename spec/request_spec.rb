@@ -62,3 +62,13 @@ describe "request.inspect" do
     body('REQUEST_METHOD'=>'POST').should ==  "#<Foo::RodaRequest POST />"
   end
 end
+
+describe "TERM.inspect" do
+  it "should return TERM" do
+    app do |r|
+      r.class::TERM.inspect
+    end
+
+    body.should ==  "TERM"
+  end
+end

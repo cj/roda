@@ -82,6 +82,14 @@ begin
   spec = lambda do |name, files, d|
     lib_dir = File.join(File.dirname(File.expand_path(__FILE__)), 'lib')
     ENV['RUBYLIB'] ? (ENV['RUBYLIB'] += ":#{lib_dir}") : (ENV['RUBYLIB'] = lib_dir)
+
+    desc "#{d} with -w, some warnings filtered"
+    task "#{name}_w" do
+      ENV['RUBYOPT'] ? (ENV['RUBYOPT'] += " -w") : (ENV['RUBYOPT'] = '-w')
+      rake = ENV['RAKE'] || "#{FileUtils::RUBY} -S rake"
+      sh "#{rake} #{name} 2>&1 | egrep -v \"(spec/.*: warning: (possibly )?useless use of == in void context|: warning: instance variable @.* not initialized|: warning: method redefined; discarding old|: warning: previous definition of)|rspec\""
+    end
+
     desc d
     spec_class.new(name) do |t|
       t.send spec_files_meth, files

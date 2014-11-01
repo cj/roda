@@ -62,14 +62,9 @@ class Roda
       end
 
       module ClassMethods
-        # If an argument is given, this is a middleware app, so create a Forwarder.
-        # Otherwise, this is a usual instance creation, so call super.
-        def new(app=nil)
-          if app
-            Forwarder.new(self, app)
-          else
-            super()
-          end
+        # Create a Forwarder instead of a new instance.
+        def new(app)
+          Forwarder.new(self, app)
         end
 
         # Override the route block so that if no route matches, we throw so

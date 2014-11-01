@@ -7,6 +7,7 @@ describe "default_headers plugin" do
     app(:bare) do
       plugin :default_headers, h
       route do |r|
+        r.halt response.finish_with_body([])
       end
     end
 
@@ -22,6 +23,7 @@ describe "default_headers plugin" do
       plugin :default_headers
 
       route do |r|
+        r.halt response.finish_with_body([])
       end
     end
 
@@ -34,13 +36,14 @@ describe "default_headers plugin" do
     app(:bare) do
       plugin :default_headers
       default_headers['Content-Type'] = 'text/json'
-      default_headers['Foo'] = 'bar'
+      default_headers['Foo'] = 'baz'
 
       route do |r|
+        r.halt response.finish_with_body([])
       end
     end
 
-    req[1].should == h
+    req[1].should == {'Content-Type'=>'text/json', 'Foo'=>'baz'}
   end
 
   it "should work correctly in subclasses" do
@@ -52,11 +55,11 @@ describe "default_headers plugin" do
       default_headers['Foo'] = 'bar'
 
       route do |r|
+        r.halt response.finish_with_body([])
       end
     end
 
     @app = Class.new(@app)
-    @app.route{}
 
     req[1].should == h
   end

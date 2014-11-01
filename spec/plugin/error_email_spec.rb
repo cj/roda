@@ -19,18 +19,27 @@ describe "error_email plugin" do
 
   it "adds error_email method for emailing exceptions" do
     app
-    body('rack.input'=>StringIO.new).should == 'e'
+    body('rack.input'=>StringIO.new, 'QUERY_STRING'=>'b=c', 'rack.session'=>{'d'=>'e'}).should == 'e'
     email[:to].should == 't'
     email[:from].should == 'f'
     email[:host].should == 'localhost'
     email[:message].should =~ /^Subject: ArgumentError/
-    email[:message].should =~ /Backtrace.*ENV/m
+    email[:message].should =~ /^Backtrace:$.+^ENV:$.+^"rack\.input" => .+^Params:$\s+^"b" => "c"$\s+^Session:$\s+^"d" => "e"$/m
   end
 
   it "uses :host option" do
     app(:host=>'foo.bar.com')
     body('rack.input'=>StringIO.new).should == 'e'
     email[:host].should == 'foo.bar.com'
+  end
+
+  it "handles error messages with new lines" do
+    app.route do |r|
+      raise "foo\nbar\nbaz" rescue error_email($!)
+      'e'
+    end
+    body('rack.input'=>StringIO.new).should == 'e'
+    email[:message].should =~ %r{From: f\r\nSubject: RuntimeError: foo\r\n bar\r\n baz\r\nTo: t\r\n\r\n}
   end
 
   it "adds :prefix option to subject line" do
@@ -64,5 +73,4 @@ describe "error_email plugin" do
     email[:message].should =~ /^Subject: ArgumentError/
     email[:message].should =~ /Backtrace.*ENV/m
   end
-
 end

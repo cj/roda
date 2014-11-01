@@ -84,13 +84,13 @@ class Roda
           mod.class_eval(<<-END, __FILE__, __LINE__+1)
             def #{verb}(*args, &block)
               if args.empty?
-                @_is_verbs << "#{verb.to_s.upcase}" if @_is_verbs
+                @_is_verbs << "#{verb.to_s.upcase}" if defined?(@_is_verbs)
                 always(&block) if #{verb == :get ? :is_get : verb}?
               else
                 args << ::Roda::RodaPlugins::Base::RequestMethods::TERM
-                if_match(args) do |*args|
+                if_match(args) do |*a|
                   if #{verb == :get ? :is_get : verb}?
-                    block_result(yield(*args))
+                    block_result(yield(*a))
                     throw :halt, response.finish
                   end
                   response.status = 405
