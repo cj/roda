@@ -39,6 +39,8 @@ class Roda
     # Hashes can also supporting nesting, though that should only be needed
     # in fairly large applications.
     #
+    # ## Asset Compilation
+    #
     # In production, you are generally going to want to compile your assets
     # into a single file, with you can do by calling compile_assets after
     # loading the plugin:
@@ -51,10 +53,30 @@ class Roda
     # files.  By default the compiled files are written to the public directory,
     # so that they can be served by the webserver.
     #
+    # ## Asset Precompilation
+    #
+    # If you want to precompile your assets, so they do not need to be compiled
+    # every time you boot the application, you can take the return value of
+    # +compile_assets+, and use it as the value of the :compiled option when
+    # loading the plugin.
+    #
+    # For example, let's say you want to store the compilation metadata in a JSON file.
+    # You would load your application and call +compile_assets+, saving the result as JSON:
+    #
+    #   require 'json'
+    #   File.write('compiled_assets.json', compile_assets.to_json)
+    #
+    # Then have your application load the compilation metadata from the JSON file when
+    # booting:
+    #
+    #   require 'json'
+    #   plugin :assets, :compiled=>JSON.parse(File.read('compiled_assets.json'))
+    #
     # :prefix :: prefix for assets path in your URL/routes (default: 'assets')
     # :path :: Path to your asset source directory (default: 'assets')
     # :public :: Path to your public folder, in which compiled files are placed (default: 'public')
-    # :compiled_path :: Path to save your compiled files to (default: :public/:prefix)
+    # :compiled_prefix :: Path inside public folder in which compiled files are stored (default: :prefix)
+    # :compiled_path :: Path to save your compiled files to (default: :public/:compiled_prefix)
     # :compiled_name :: Compiled file name prefix (default: 'app')
     # :css_dir :: Directory name containing your css source, inside :path (default: 'css')
     # :js_dir :: Directory name containing your javascript source, inside :path (default: 'js')
@@ -72,6 +94,7 @@ class Roda
     module Assets
       def self.load_dependencies(app, _opts = {})
         app.plugin :render
+        app.plugin :caching
       end
 
       def self.configure(app, opts = {})
@@ -98,8 +121,6 @@ class Roda
         end
 
         opts[:compiled_name] ||= 'app'
-        opts[:css]           ||= []
-        opts[:js]            ||= []
         opts[:css_headers]   ||= {} 
         opts[:js_headers]    ||= {} 
 
@@ -112,9 +133,10 @@ class Roda
         opts[:prefix] = 'assets' unless opts.has_key?(:prefix)
         opts[:public] = 'public' unless opts.has_key?(:public)
 
-        opts[:compiled_path] = sj.call(:public, :prefix) unless opts.has_key?(:compiled_path)
-        opts[:concat_only]   = false unless opts.has_key?(:concat_only)
-        opts[:compiled]      = false unless opts.has_key?(:compiled)
+        opts[:compiled_prefix] = opts[:prefix] unless opts.has_key?(:compiled_prefix)
+        opts[:compiled_path]   = sj.call(:public, :compiled_prefix) unless opts.has_key?(:compiled_path)
+        opts[:concat_only]     = false unless opts.has_key?(:concat_only)
+        opts[:compiled]        = false unless opts.has_key?(:compiled)
 
         if headers = opts[:headers]
           opts[:css_headers] = headers.merge(opts[:css_headers])
@@ -147,8 +169,8 @@ class Roda
         def inherited(subclass)
           super
           opts               = subclass.opts[:assets] = assets_opts.dup
-          opts[:css]         = opts[:css].dup
-          opts[:js]          = opts[:js].dup
+          opts[:css]         = opts[:css].dup if opts[:css] 
+          opts[:js]          = opts[:js].dup if opts[:js]
           opts[:css_headers] = opts[:css_headers].dup
           opts[:js_headers]  = opts[:js_headers].dup
           opts[:cache] = thread_safe_cache if opts[:cache]
@@ -183,10 +205,9 @@ class Roda
           case files
           when Hash
             files.each_key{|dir| _compile_assets([type] + dirs + [dir])}
-          when nil
-            # No files for this asset type
           else
-            compile_process_files(Array(files), type, dirs)
+            files = Array(files)
+            compile_process_files(files, type, dirs) unless files.empty?
           end
         end
 
@@ -194,13 +215,14 @@ class Roda
           dirs = nil if dirs && dirs.empty?
           require 'digest/sha1'
 
+          o = assets_opts
           app = new
           content = files.map do |file|
             file = "#{dirs.join('/')}/#{file}" if dirs
+            file = "#{o[:"#{type}_path"]}#{file}"
             app.read_asset_file(file, type)
           end.join
 
-          o = assets_opts
           unless o[:concat_only]
             begin
               require 'yuicompressor'
@@ -250,28 +272,36 @@ class Roda
               dirs.each{|f| asset_dir = asset_dir[f]}
               prefix = "#{dirs.join('/')}/"
             end
-            asset_dir.map{|f| "#{tag_start}#{o[:"#{stype}_prefix"]}#{prefix}#{f}#{tag_end}"}.join("\n")
+            Array(asset_dir).map{|f| "#{tag_start}#{o[:"#{stype}_prefix"]}#{prefix}#{f}#{tag_end}"}.join("\n")
           end
         end
 
         def render_asset(file, type)
-          if self.class.assets_opts[:compiled]
-            path = "#{self.class.assets_opts[:"compiled_#{type}_path"]}#{file}"
-            File.read(path)
+          o = self.class.assets_opts
+          if o[:compiled]
+            file = "#{o[:"compiled_#{type}_path"]}#{file}"
+            check_asset_request(file, type)
+            File.read(file)
           else
+            file = "#{o[:"#{type}_path"]}#{file}"
+            check_asset_request(file, type)
             read_asset_file(file, type)
           end
         end
 
         def read_asset_file(file, type)
-          o = self.class.assets_opts
-          file = "#{o[:"#{type}_path"]}#{file}"
-
           if file.end_with?(".#{type}")
             File.read(file)
           else
             render(:path => file)
           end
+        end
+
+        private
+
+        def check_asset_request(file, type)
+          request.last_modified(File.stat(file).mtime)
+          response.headers.merge!(self.class.assets_opts[:"#{type}_headers"])
         end
       end
 
@@ -313,7 +343,6 @@ class Roda
           if is_get?
             self.class.assets_matchers.each do |type, matcher|
               is matcher do |file|
-                response.headers.merge!(self.class.roda_class.assets_opts[:"#{type}_headers"])
                 scope.render_asset(file, type)
               end
             end
