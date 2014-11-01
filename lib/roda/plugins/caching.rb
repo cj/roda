@@ -164,6 +164,8 @@ class Roda
         COMMA = ', '.freeze
         CACHE_CONTROL = 'Cache-Control'.freeze
         EXPIRES = 'Expires'.freeze
+        CONTENT_TYPE = 'Content-Type'.freeze
+        CONTENT_LENGTH = 'Content-Length'.freeze
 
         # Specify response freshness policy for using the Cache-Control header.
         # Options can can any non-value directives (:public, :private, :no_cache,
@@ -193,6 +195,17 @@ class Roda
         def expires(max_age, opts={})
           cache_control(opts.merge(:max_age=>max_age))
           self[EXPIRES] = (Time.now + max_age).httpdate
+        end
+
+        # Remove Content-Type and Content-Length for 304 responses.
+        def finish
+          a = super
+          if a[0] == 304
+            h = a[1]
+            h.delete(CONTENT_TYPE)
+            h.delete(CONTENT_LENGTH)
+          end
+          a
         end
       end
     end

@@ -34,6 +34,24 @@ describe 'response.expires' do
   end
 end
 
+describe 'response.finish' do
+  it 'removes Content-Type and Content-Length for 304 responses' do
+    app(:caching) do |r|
+      response.status = 304
+    end
+    header('Content-Type').should == nil
+    header('Content-Length').should == nil
+  end
+
+  it 'does not change non-304 responses' do
+    app(:caching) do |r|
+      response.status = 200
+    end
+    header('Content-Type').should == 'text/html'
+    header('Content-Length').should == '0'
+  end
+end
+
 describe 'request.last_modified' do
   it 'ignores nil' do
     app(:caching) do |r|
