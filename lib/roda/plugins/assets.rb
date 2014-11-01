@@ -99,9 +99,10 @@ class Roda
 
       def self.configure(app, opts = {})
         if app.assets_opts
-          app.assets_opts.merge!(opts)
+          app.opts[:assets] = app.assets_opts[:orig_opts].merge(opts)
         else
           app.opts[:assets] = opts.dup
+          app.opts[:assets][:orig_opts] = opts
         end
         opts = app.opts[:assets]
 
@@ -160,6 +161,7 @@ class Roda
         if opts.fetch(:cache, true)
           opts[:cache] = app.thread_safe_cache
         end
+        opts.freeze
       end
 
       module ClassMethods
@@ -174,6 +176,7 @@ class Roda
           opts[:css_headers] = opts[:css_headers].dup
           opts[:js_headers]  = opts[:js_headers].dup
           opts[:cache] = thread_safe_cache if opts[:cache]
+          opts.freeze
         end
 
         # Return the assets options for this class.
@@ -182,7 +185,9 @@ class Roda
         end
 
         def compile_assets(type=nil)
-          assets_opts[:compiled] ||= {}
+          unless assets_opts[:compiled]
+            opts[:assets] = assets_opts.merge(:compiled => {})
+          end
 
           if type == nil
             _compile_assets(:css)
