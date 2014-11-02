@@ -88,6 +88,9 @@ class Roda
     #                 and compressing files (default: false)
     # :compiled :: A hash mapping asset identifiers to the unique id for the compiled asset file,
     #              used when precompilng your assets before application startup
+    # :dependencies :: A hash of dependencies for your asset files.  Keys should be paths to asset files,
+    #                  values should be arrays of paths your asset files depends on.  This is used to
+    #                  detect changes in your asset files.
     # :headers :: A hash of additional headers for both js and css rendered files
     # :css_headers :: A hash of additional headers for your rendered css files
     # :js_headers :: A hash of additional headers for your rendered javascript files
@@ -100,9 +103,15 @@ class Roda
       def self.configure(app, opts = {})
         if app.assets_opts
           app.opts[:assets] = app.assets_opts[:orig_opts].merge(opts)
+          [:css_headers, :js_headers, :dependencies].each do |s|
+            app.opts[:assets][s] = app.opts[:assets][s].merge(opts[s]) if opts[s]
+          end
         else
           app.opts[:assets] = opts.dup
           app.opts[:assets][:orig_opts] = opts
+          [:css_headers, :js_headers, :dependencies].each do |s|
+            app.opts[:assets][s] ||= {} 
+          end
         end
         opts = app.opts[:assets]
 
@@ -122,8 +131,6 @@ class Roda
         end
 
         opts[:compiled_name] ||= 'app'
-        opts[:css_headers]   ||= {} 
-        opts[:js_headers]    ||= {} 
 
         opts[:js_dir]           = 'js' unless opts.has_key?(:js_dir)
         opts[:css_dir]          = 'css' unless opts.has_key?(:css_dir)
@@ -285,11 +292,11 @@ class Roda
           o = self.class.assets_opts
           if o[:compiled]
             file = "#{o[:"compiled_#{type}_path"]}#{file}"
-            check_asset_request(file, type)
+            check_asset_request(file, type, File.stat(file).mtime)
             File.read(file)
           else
             file = "#{o[:"#{type}_path"]}#{file}"
-            check_asset_request(file, type)
+            check_asset_request(file, type, asset_last_modified(file))
             read_asset_file(file, type)
           end
         end
@@ -304,8 +311,16 @@ class Roda
 
         private
 
-        def check_asset_request(file, type)
-          request.last_modified(File.stat(file).mtime)
+        def asset_last_modified(file)
+          if deps = self.class.assets_opts[:dependencies][file]
+            ([file] + Array(deps)).map{|f| File.stat(f).mtime}.max
+          else
+            File.stat(file).mtime
+          end
+        end
+
+        def check_asset_request(file, type, mtime)
+          request.last_modified(mtime)
           response.headers.merge!(self.class.assets_opts[:"#{type}_headers"])
         end
       end
