@@ -165,9 +165,6 @@ class Roda
         opts[:compiled_js_prefix]  = j.call(:prefix, :compiled_js_dir, :compiled_name)
         opts[:compiled_css_prefix] = j.call(:prefix, :compiled_css_dir, :compiled_name)
 
-        if opts.fetch(:cache, true)
-          opts[:cache] = app.thread_safe_cache
-        end
         opts.freeze
       end
 
@@ -182,7 +179,6 @@ class Roda
           opts[:js]          = opts[:js].dup if opts[:js]
           opts[:css_headers] = opts[:css_headers].dup
           opts[:js_headers]  = opts[:js_headers].dup
-          opts[:cache] = thread_safe_cache if opts[:cache]
           opts.freeze
         end
 
