@@ -75,8 +75,7 @@ class Roda
     # :prefix :: prefix for assets path in your URL/routes (default: 'assets')
     # :path :: Path to your asset source directory (default: 'assets')
     # :public :: Path to your public folder, in which compiled files are placed (default: 'public')
-    # :compiled_prefix :: Path inside public folder in which compiled files are stored (default: :prefix)
-    # :compiled_path :: Path to save your compiled files to (default: :public/:compiled_prefix)
+    # :compiled_path:: Path inside public folder in which compiled files are stored (default: :prefix)
     # :compiled_name :: Compiled file name prefix (default: 'app')
     # :css_dir :: Directory name containing your css source, inside :path (default: 'css')
     # :js_dir :: Directory name containing your javascript source, inside :path (default: 'js')
@@ -120,29 +119,27 @@ class Roda
           opts.values_at(*v).
             reject{|s| s.to_s.empty?}.
             map{|s| s.chomp('/')}.
-            join('/')
+            join('/').freeze
         end
 
         # Same as j, but add a trailing slash if not empty
         sj = lambda do |*v|
           s = j.call(*v)
-          s << '/' unless s.empty?
-          s
+          s.empty? ? s : (s + '/').freeze
         end
 
-        opts[:compiled_name] ||= 'app'
+        opts[:compiled_name] ||= 'app'.freeze
 
-        opts[:js_dir]           = 'js' unless opts.has_key?(:js_dir)
-        opts[:css_dir]          = 'css' unless opts.has_key?(:css_dir)
+        opts[:js_dir]           = 'js'.freeze unless opts.has_key?(:js_dir)
+        opts[:css_dir]          = 'css'.freeze unless opts.has_key?(:css_dir)
         opts[:compiled_js_dir]  = opts[:js_dir] unless opts.has_key?(:compiled_js_dir)
         opts[:compiled_css_dir] = opts[:css_dir] unless opts.has_key?(:compiled_css_dir)
 
-        opts[:path]   = 'assets' unless opts.has_key?(:path)
-        opts[:prefix] = 'assets' unless opts.has_key?(:prefix)
-        opts[:public] = 'public' unless opts.has_key?(:public)
+        opts[:path]   = 'assets'.freeze unless opts.has_key?(:path)
+        opts[:prefix] = 'assets'.freeze unless opts.has_key?(:prefix)
+        opts[:public] = 'public'.freeze unless opts.has_key?(:public)
 
-        opts[:compiled_prefix] = opts[:prefix] unless opts.has_key?(:compiled_prefix)
-        opts[:compiled_path]   = sj.call(:public, :compiled_prefix) unless opts.has_key?(:compiled_path)
+        opts[:compiled_path]   = opts[:prefix] unless opts.has_key?(:compiled_path)
         opts[:concat_only]     = false unless opts.has_key?(:concat_only)
         opts[:compiled]        = false unless opts.has_key?(:compiled)
 
@@ -150,14 +147,14 @@ class Roda
           opts[:css_headers] = headers.merge(opts[:css_headers])
           opts[:js_headers]  = headers.merge(opts[:js_headers])
         end
-        opts[:css_headers]['Content-Type'] ||= "text/css; charset=UTF-8"
-        opts[:js_headers]['Content-Type']  ||= "application/javascript; charset=UTF-8"
+        opts[:css_headers]['Content-Type'] ||= "text/css; charset=UTF-8".freeze
+        opts[:js_headers]['Content-Type']  ||= "application/javascript; charset=UTF-8".freeze
 
         # Used for reading/writing files
         opts[:js_path]           = sj.call(:path, :compiled_js_dir)
         opts[:css_path]          = sj.call(:path, :compiled_css_dir)
-        opts[:compiled_js_path]  = j.call(:compiled_path, :compiled_js_dir, :compiled_name)
-        opts[:compiled_css_path] = j.call(:compiled_path, :compiled_css_dir, :compiled_name)
+        opts[:compiled_js_path]  = j.call(:public, :compiled_path, :compiled_js_dir, :compiled_name)
+        opts[:compiled_css_path] = j.call(:public, :compiled_path, :compiled_css_dir, :compiled_name)
 
         # Used for URLs/routes
         opts[:js_prefix]           = sj.call(:prefix, :compiled_js_dir)
