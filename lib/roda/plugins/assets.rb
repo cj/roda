@@ -324,7 +324,9 @@ class Roda
       module RequestClassMethods
         # The matcher for the assets route
         def assets_matchers
-          @assets_matchers ||= [['css'.freeze, assets_regexp(:css)].freeze, ['js'.freeze, assets_regexp(:js)].freeze].freeze
+          @assets_matchers ||= [:css, :js].map do |t|
+            [t.to_s.freeze, assets_regexp(t)].freeze if roda_class.assets_opts[t]
+          end.compact.freeze
         end
 
         private
