@@ -1,13 +1,34 @@
 class Roda
   module RodaPlugins
     # The assets plugin adds support for rendering your CSS and javascript
-    # asset files using the render plugin in development, and compiling them
+    # asset files on the fly in development, and compiling them
     # to a single, compressed file in production.
+    #
+    # This uses the render plugin for rendering the assets, and the render
+    # plugin uses tilt internally, so you can use any template engine
+    # supported by tilt for you assets.  Tilt ships with support for
+    # the following asset template engines, assuming the necessary libaries
+    # are installed:
+    #
+    # css :: Less, Sass, Scss
+    # js :: CoffeeScript
+    #
+    # == Usage
     #
     # When loading the plugin, use the :css and :js options
     # to set the source file(s) to use for CSS and javascript assets:
     #
     #   plugin :assets, :css => 'some_file.scss', :js => 'some_file.coffee'
+    #
+    # This will look for the following files:
+    #
+    #   assets/css/some_file.scss
+    #   assets/js/some_file.coffee
+    #
+    # If you want to change the paths where asset files are stored, see the
+    # Options section below.
+    #
+    # === Routing
     #
     # In your routes, call the r.assets method to add a route to your assets:
     #
@@ -15,29 +36,67 @@ class Roda
     #     r.assets
     #   end
     #
+    # You should generally call +r.assets+ inside the route block itself, and not
+    # under any branches of the routing tree.
+    #
+    # === Views
+    #
     # In your layout view, use the assets method to add links to your CSS and
-    # javascript files assets:
+    # javascript assets:
     #
     #   <%= assets(:css) %>
     #   <%= assets(:js) %>
     #
-    # You can add attributes to the tags by using options:
+    # You can add attributes to the tags by using an options hash:
     #
     #   <%= assets(:css, :media => 'print') %>
     #
-    # Assets also supports groups incase you have different css/js files for
-    # your front end and back end.  To do this you pass a hash for the :css
-    # and :js options:
+    # == Asset Groups
+    #
+    # The asset plugin supports groups for the cases where you have different
+    # css/js files for your front end and back end.  To use asset groups, you
+    # pass a hash for the :css and/or :js options:
     #
     #   plugin :assets, :css => {:frontend => 'some_frontend_file.scss',
     #                            :backend => 'some_backend_file.scss'}
     #
-    # Then in your view code use an array argument in your call to assets:
+    # This expects the following directory structure for your assets:
+    #
+    #   assets/css/frontend/some_frontend_file.scss
+    #   assets/css/backend/some_backend_file.scss
+    #
+    # In your view code use an array argument in your call to assets:
     #
     #   <%= assets([:css, :frontend]) %>
     #
-    # Hashes can also supporting nesting, though that should only be needed
-    # in fairly large applications.
+    # === Nesting
+    #
+    # Asset groups also supporting nesting, though that should only be needed
+    # in fairly large applications.  You can use a nested hash when loading
+    # the plugin:
+    #
+    #   plugin :assets,
+    #     :css => {:frontend => {:dashboard => 'some_frontend_file.scss'}}
+    #
+    # and an extra entry per nesting level when creating the tags.
+    #
+    #   <%= assets([:css, :frontend, :dashboard]) %>
+    #
+    # == Caching
+    #
+    # The assets plugin uses the caching plugin internally, and will set the
+    # Last-Modified header to the modified timestamp of the asset source file
+    # when rendering the asset.
+    #
+    # If you have assets that include other asset files, such as using @import
+    # in a sass file, you need to specify the dependencies for your assets so
+    # that the assets plugin will correctly pick up changes.  You can do this
+    # using the :dependencies option to the plugin, which takes a hash where
+    # the keys are paths to asset files, and values are arrays of paths to
+    # dependencies of those asset files:
+    #
+    #   app.plugin :assets,
+    #     :dependencies=>{'assets/css/bootstrap.scss'=>Dir['assets/css/bootstrap/' '**/*.scss']}
     #
     # == Asset Compilation
     #
@@ -53,7 +112,42 @@ class Roda
     # files.  By default the compiled files are written to the public directory,
     # so that they can be served by the webserver.
     #
-    # == Asset Precompilation
+    # === Asset Compression
+    #
+    # If you have the yuicompressor gem installed and working, it will be used
+    # automatically to compress your javascript and css assets.  Otherwise,
+    # the assets will just be concatenated together and not compressed during
+    # compilation.
+    #
+    # === With Asset Groups
+    #
+    # When using asset groups, a separate compiled file will be produced per
+    # asset group.
+    #
+    # === Unique Asset Names
+    #
+    # When compiling assets, a unique name is given to each asset file, using the
+    # a SHA1 hash of the content of the file.  This is done so that clients do
+    # not attempt to use cached versions of the assets if the asset has changed.
+    #
+    # === Serving
+    #
+    # If you call +r.assets+ when compiling assets, will serve the compiled asset
+    # files.  However, it is recommended to have the main webserver (e.g. nginx)
+    # serve the compiled files, instead of relying on the application.
+    #
+    # Assuming you are using compiled assets in production mode that are served
+    # by the webserver, you can remove the serving of them by the application:
+    #
+    #   route do |r|
+    #     r.assets unless ENV['RACK_ENV'] == 'production'
+    #   end
+    #
+    # If you do have the application serve the compiled assets, it will use the
+    # Last-Modified header to make sure that clients do not redownload compiled
+    # assets that haven't changed.
+    #
+    # === Asset Precompilation
     #
     # If you want to precompile your assets, so they do not need to be compiled
     # every time you boot the application, you can take the return value of
@@ -83,27 +177,27 @@ class Roda
     #              used when precompilng your assets before application startup
     # :compiled_css_dir :: Directory name in which to store the compiled css file,
     #                      inside :compiled_path (default: :css_dir)
-    # :compiled_css_route :: route under :prefix for compiled css assets (default: :compiled_css_dir)
+    # :compiled_css_route :: Route under :prefix for compiled css assets (default: :compiled_css_dir)
     # :compiled_js_dir :: Directory name in which to store the compiled javascript file,
     #                     inside :compiled_path (default: :js_dir)
-    # :compiled_js_route :: route under :prefix for compiled javscript assets (default: :compiled_js_dir)
+    # :compiled_js_route :: Route under :prefix for compiled javscript assets (default: :compiled_js_dir)
     # :compiled_name :: Compiled file name prefix (default: 'app')
     # :compiled_path:: Path inside public folder in which compiled files are stored (default: :prefix)
-    # :concat_only :: whether to just concatenate instead of concatentating
+    # :concat_only :: Whether to just concatenate instead of concatentating
     #                 and compressing files (default: false)
     # :css_dir :: Directory name containing your css source, inside :path (default: 'css')
     # :css_headers :: A hash of additional headers for your rendered css files
-    # :css_route :: route under :prefix for css assets (default: :css_dir)
+    # :css_route :: Route under :prefix for css assets (default: :css_dir)
     # :dependencies :: A hash of dependencies for your asset files.  Keys should be paths to asset files,
     #                  values should be arrays of paths your asset files depends on.  This is used to
     #                  detect changes in your asset files.
     # :headers :: A hash of additional headers for both js and css rendered files
-    # :prefix :: prefix for assets path in your URL/routes (default: 'assets')
+    # :prefix :: Prefix for assets path in your URL/routes (default: 'assets')
     # :path :: Path to your asset source directory (default: 'assets')
     # :public :: Path to your public folder, in which compiled files are placed (default: 'public')
     # :js_dir :: Directory name containing your javascript source, inside :path (default: 'js')
     # :js_headers :: A hash of additional headers for your rendered javascript files
-    # :js_route :: route under :prefix for javascript assets (default: :js_dir)
+    # :js_route :: Route under :prefix for javascript assets (default: :js_dir)
     module Assets
       DEFAULTS = {
         :compiled_name => 'app'.freeze,
