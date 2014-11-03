@@ -60,16 +60,19 @@ if run_tests
       app.plugin :assets, :compiled_js_dir=>'cj', :compiled_css_dir=>'cs', :compiled_path=>'cp'
       app.assets_opts.values_at(*keys).should == %w"bar/j/ bar/c/ foo/cp/cj/a foo/cp/cs/a as/j/ as/c/ as/cj/a as/cs/a"
 
-      app.plugin :assets
+      app.plugin :assets, :compiled_js_route=>'cjr', :compiled_css_route=>'ccr', :js_route=>'jr', :css_route=>'cr'
+      app.assets_opts.values_at(*keys).should == %w"bar/j/ bar/c/ foo/cp/cj/a foo/cp/cs/a as/jr/ as/cr/ as/cjr/a as/ccr/a"
+
+      app.plugin :assets, :compiled_js_route=>'cj', :compiled_css_route=>'cs', :js_route=>'j', :css_route=>'c'
       app.assets_opts.values_at(*keys).should == %w"bar/j/ bar/c/ foo/cp/cj/a foo/cp/cs/a as/j/ as/c/ as/cj/a as/cs/a"
 
       app.plugin :assets
       app.assets_opts.values_at(*keys).should == %w"bar/j/ bar/c/ foo/cp/cj/a foo/cp/cs/a as/j/ as/c/ as/cj/a as/cs/a"
 
-      app.plugin :assets, :compiled_js_dir=>'', :compiled_css_dir=>nil
+      app.plugin :assets, :compiled_js_dir=>'', :compiled_css_dir=>nil, :compiled_js_route=>nil, :compiled_css_route=>nil
       app.assets_opts.values_at(*keys).should == %w"bar/j/ bar/c/ foo/cp/a foo/cp/a as/j/ as/c/ as/a as/a"
 
-      app.plugin :assets, :js_dir=>'', :css_dir=>nil
+      app.plugin :assets, :js_dir=>'', :css_dir=>nil, :js_route=>nil, :css_route=>nil
       app.assets_opts.values_at(*keys).should == %w"bar/ bar/ foo/cp/a foo/cp/a as/ as/ as/a as/a"
 
       app.plugin :assets, :public=>''
@@ -124,15 +127,15 @@ if run_tests
     end
 
     it 'should handle rendering assets, linking to them, and accepting requests for them when not compiling, with different options' do
-      app.plugin :assets, :path=>'spec/', :js_dir=>'assets/js', :css_dir=>'assets/css', :prefix=>'a'
+      app.plugin :assets, :path=>'spec/', :js_dir=>'assets/js', :css_dir=>'assets/css', :prefix=>'a', :js_route=>'foo', :css_route=>'bar'
       html = body('/test')
       html.scan(/<link/).length.should == 2
-      html =~ %r{href="(/a/assets/css/app\.scss)"}
+      html =~ %r{href="(/a/bar/app\.scss)"}
       css = body($1)
-      html =~ %r{href="(/a/assets/css/raw\.css)"}
+      html =~ %r{href="(/a/bar/raw\.css)"}
       css2 = body($1)
       html.scan(/<script/).length.should == 1
-      html =~ %r{src="(/a/assets/js/head/app\.coffee)"}
+      html =~ %r{src="(/a/foo/head/app\.coffee)"}
       js = body($1)
       css.should =~ /color: red;/
       css2.should =~ /color: blue;/
@@ -177,14 +180,15 @@ if run_tests
     end
 
     it 'should handle compiling assets, linking to them, and accepting requests for them, with different options' do
-      app.plugin :assets, :compiled_path=>nil, :js_dir=>'assets/js', :css_dir=>'assets/css', :prefix=>'a', :public=>'spec', :path=>'spec' 
+      app.plugin :assets, :compiled_path=>nil, :js_dir=>'assets/js', :css_dir=>'assets/css', :prefix=>'a',
+        :public=>'spec', :path=>'spec', :compiled_js_route=>'foo', :compiled_css_route=>'bar'
       app.compile_assets
       html = body('/test')
       html.scan(/<link/).length.should == 1
-      html =~ %r{href="(/a/assets/css/app\.[a-f0-9]{40}\.css)"}
+      html =~ %r{href="(/a/bar/app\.[a-f0-9]{40}\.css)"}
       css = body($1)
       html.scan(/<script/).length.should == 1
-      html =~ %r{src="(/a/assets/js/app\.head\.[a-f0-9]{40}\.js)"}
+      html =~ %r{src="(/a/foo/app\.head\.[a-f0-9]{40}\.js)"}
       js = body($1)
       css.should =~ /color: ?red/
       css.should =~ /color: ?blue/

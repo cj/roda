@@ -81,14 +81,17 @@ class Roda
     #              used when precompilng your assets before application startup
     # :compiled_css_dir :: Directory name in which to store the compiled css file,
     #                      inside :compiled_path (default: :css_dir)
+    # :compiled_css_route :: route under :prefix for compiled css assets (default: :compiled_css_dir)
     # :compiled_js_dir :: Directory name in which to store the compiled javascript file,
     #                     inside :compiled_path (default: :js_dir)
+    # :compiled_js_route :: route under :prefix for compiled javscript assets (default: :compiled_js_dir)
     # :compiled_name :: Compiled file name prefix (default: 'app')
     # :compiled_path:: Path inside public folder in which compiled files are stored (default: :prefix)
     # :concat_only :: whether to just concatenate instead of concatentating
     #                 and compressing files (default: false)
     # :css_dir :: Directory name containing your css source, inside :path (default: 'css')
     # :css_headers :: A hash of additional headers for your rendered css files
+    # :css_route :: route under :prefix for css assets (default: :css_dir)
     # :dependencies :: A hash of dependencies for your asset files.  Keys should be paths to asset files,
     #                  values should be arrays of paths your asset files depends on.  This is used to
     #                  detect changes in your asset files.
@@ -98,6 +101,7 @@ class Roda
     # :public :: Path to your public folder, in which compiled files are placed (default: 'public')
     # :js_dir :: Directory name containing your javascript source, inside :path (default: 'js')
     # :js_headers :: A hash of additional headers for your rendered javascript files
+    # :js_route :: route under :prefix for javascript assets (default: :js_dir)
     module Assets
       DEFAULTS = {
         :compiled_name => 'app'.freeze,
@@ -160,7 +164,15 @@ class Roda
         DEFAULTS.each do |k, v|
           opts[k] = v unless opts.has_key?(k)
         end
-        [[:compiled_js_dir, :js_dir], [:compiled_css_dir, :css_dir], [:compiled_path, :prefix]].each do |k, v|
+        [
+         [:compiled_js_dir, :js_dir],
+         [:compiled_css_dir, :css_dir],
+         [:compiled_path, :prefix],
+         [:js_route, :js_dir],
+         [:css_route, :css_dir],
+         [:compiled_js_route, :compiled_js_dir],
+         [:compiled_css_route, :compiled_css_dir]
+        ].each do |k, v|
           opts[k]  = opts[v] unless opts.has_key?(k)
         end
         [:css_headers, :js_headers, :dependencies].each do |s|
@@ -188,10 +200,10 @@ class Roda
         opts[:compiled_css_path] = j.call(:public, :compiled_path, :compiled_css_dir, :compiled_name)
 
         # Used for URLs/routes
-        opts[:js_prefix]           = sj.call(:prefix, :js_dir)
-        opts[:css_prefix]          = sj.call(:prefix, :css_dir)
-        opts[:compiled_js_prefix]  = j.call(:prefix, :compiled_js_dir, :compiled_name)
-        opts[:compiled_css_prefix] = j.call(:prefix, :compiled_css_dir, :compiled_name)
+        opts[:js_prefix]           = sj.call(:prefix, :js_route)
+        opts[:css_prefix]          = sj.call(:prefix, :css_route)
+        opts[:compiled_js_prefix]  = j.call(:prefix, :compiled_js_route, :compiled_name)
+        opts[:compiled_css_prefix] = j.call(:prefix, :compiled_css_route, :compiled_name)
 
         opts.freeze
       end
