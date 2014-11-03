@@ -785,6 +785,9 @@ override any Roda method and call +super+ to get the default behavior.
 These plugins ship with roda:
 
 all_verbs :: Adds routing methods to the request for all http verbs.
+assets :: Adds support for rendering CSS/JS javascript assets on the fly
+          in development, or compiling them into a single compressed file
+          in production.
 backtracking_array :: Allows array matchers to backtrack if later matchers
                       do not match.
 caching :: Adds request and response methods related to http caching.

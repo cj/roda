@@ -39,7 +39,7 @@ class Roda
     # Hashes can also supporting nesting, though that should only be needed
     # in fairly large applications.
     #
-    # ## Asset Compilation
+    # == Asset Compilation
     #
     # In production, you are generally going to want to compile your assets
     # into a single file, with you can do by calling compile_assets after
@@ -53,7 +53,7 @@ class Roda
     # files.  By default the compiled files are written to the public directory,
     # so that they can be served by the webserver.
     #
-    # ## Asset Precompilation
+    # == Asset Precompilation
     #
     # If you want to precompile your assets, so they do not need to be compiled
     # every time you boot the application, you can take the return value of
@@ -72,26 +72,31 @@ class Roda
     #   require 'json'
     #   plugin :assets, :compiled=>JSON.parse(File.read('compiled_assets.json'))
     #
-    # :prefix :: prefix for assets path in your URL/routes (default: 'assets')
-    # :path :: Path to your asset source directory (default: 'assets')
-    # :public :: Path to your public folder, in which compiled files are placed (default: 'public')
-    # :compiled_path:: Path inside public folder in which compiled files are stored (default: :prefix)
-    # :compiled_name :: Compiled file name prefix (default: 'app')
-    # :css_dir :: Directory name containing your css source, inside :path (default: 'css')
-    # :js_dir :: Directory name containing your javascript source, inside :path (default: 'js')
+    # When using the :compiled option, Roda will assume you already the precompiled
+    # asset files that were created when you called +compile_assets+ already exist.
+    #
+    # == Plugin Options
+    #
+    # :compiled :: A hash mapping asset identifiers to the unique id for the compiled asset file,
+    #              used when precompilng your assets before application startup
     # :compiled_css_dir :: Directory name in which to store the compiled css file,
     #                      inside :compiled_path (default: :css_dir)
     # :compiled_js_dir :: Directory name in which to store the compiled javascript file,
     #                     inside :compiled_path (default: :js_dir)
+    # :compiled_name :: Compiled file name prefix (default: 'app')
+    # :compiled_path:: Path inside public folder in which compiled files are stored (default: :prefix)
     # :concat_only :: whether to just concatenate instead of concatentating
     #                 and compressing files (default: false)
-    # :compiled :: A hash mapping asset identifiers to the unique id for the compiled asset file,
-    #              used when precompilng your assets before application startup
+    # :css_dir :: Directory name containing your css source, inside :path (default: 'css')
+    # :css_headers :: A hash of additional headers for your rendered css files
     # :dependencies :: A hash of dependencies for your asset files.  Keys should be paths to asset files,
     #                  values should be arrays of paths your asset files depends on.  This is used to
     #                  detect changes in your asset files.
     # :headers :: A hash of additional headers for both js and css rendered files
-    # :css_headers :: A hash of additional headers for your rendered css files
+    # :prefix :: prefix for assets path in your URL/routes (default: 'assets')
+    # :path :: Path to your asset source directory (default: 'assets')
+    # :public :: Path to your public folder, in which compiled files are placed (default: 'public')
+    # :js_dir :: Directory name containing your javascript source, inside :path (default: 'js')
     # :js_headers :: A hash of additional headers for your rendered javascript files
     module Assets
       DEFAULTS = {
