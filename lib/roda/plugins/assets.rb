@@ -104,6 +104,13 @@ class Roda
         :concat_only   => false,
         :compiled      => false
       }
+      JS_END = "\"></script>".freeze
+      CSS_END = "\" />".freeze
+      SPACE = ' '.freeze
+      DOT = '.'.freeze
+      SLASH = '/'.freeze
+      NEWLINE = "\n".freeze
+      EMPTY_STRING = ''.freeze
 
       def self.load_dependencies(app, _opts = {})
         app.plugin :render
@@ -254,30 +261,30 @@ class Roda
 
       module InstanceMethods
         # This will ouput the files with the appropriate tags
-        def assets(type, attrs = {})
+        def assets(type, attrs = nil)
           o = self.class.assets_opts
           type, *dirs = type if type.is_a?(Array)
           stype = type.to_s
 
-          attrs = if attrs.empty?
-            ''
-          else
+          attrs = if attrs
             ru = Rack::Utils
-            attrs.map{|k,v| "#{k}=\"#{ru.escape_html(v.to_s)}\""}.join(' ')
+            attrs.map{|k,v| "#{k}=\"#{ru.escape_html(v.to_s)}\""}.join(SPACE)
+          else
+            EMPTY_STRING
           end
 
           if type == :js
             tag_start = "<script type=\"text/javascript\" #{attrs} src=\"/"
-            tag_end = "\"></script>"
+            tag_end = JS_END
           else
             tag_start = "<link rel=\"stylesheet\" #{attrs} href=\"/"
-            tag_end = "\" />"
+            tag_end = CSS_END
           end
 
           # Create a tag for each individual file
           if compiled = o[:compiled]
             if dirs && !dirs.empty?
-              key = dirs.join('.')
+              key = dirs.join(DOT)
               ckey = "#{stype}.#{key}"
               if ukey = compiled[ckey]
                 "#{tag_start}#{o[:"compiled_#{stype}_prefix"]}.#{key}.#{ukey}.#{stype}#{tag_end}"
@@ -289,9 +296,9 @@ class Roda
             asset_dir = o[type]
             if dirs && !dirs.empty?
               dirs.each{|f| asset_dir = asset_dir[f]}
-              prefix = "#{dirs.join('/')}/"
+              prefix = "#{dirs.join(SLASH)}/"
             end
-            Array(asset_dir).map{|f| "#{tag_start}#{o[:"#{stype}_prefix"]}#{prefix}#{f}#{tag_end}"}.join("\n")
+            Array(asset_dir).map{|f| "#{tag_start}#{o[:"#{stype}_prefix"]}#{prefix}#{f}#{tag_end}"}.join(NEWLINE)
           end
         end
 
