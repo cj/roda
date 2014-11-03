@@ -127,15 +127,16 @@ if run_tests
     end
 
     it 'should handle rendering assets, linking to them, and accepting requests for them when not compiling, with different options' do
-      app.plugin :assets, :path=>'spec/', :js_dir=>'assets/js', :css_dir=>'assets/css', :prefix=>'a', :js_route=>'foo', :css_route=>'bar'
+      app.plugin :assets, :path=>'spec/', :js_dir=>'assets/js', :css_dir=>'assets/css', :prefix=>'a',
+        :js_route=>'foo', :css_route=>'bar', :add_suffix=>true
       html = body('/test')
       html.scan(/<link/).length.should == 2
-      html =~ %r{href="(/a/bar/app\.scss)"}
+      html =~ %r{href="(/a/bar/app\.scss.css)"}
       css = body($1)
-      html =~ %r{href="(/a/bar/raw\.css)"}
+      html =~ %r{href="(/a/bar/raw\.css.css)"}
       css2 = body($1)
       html.scan(/<script/).length.should == 1
-      html =~ %r{src="(/a/foo/head/app\.coffee)"}
+      html =~ %r{src="(/a/foo/head/app\.coffee.js)"}
       js = body($1)
       css.should =~ /color: red;/
       css2.should =~ /color: blue;/

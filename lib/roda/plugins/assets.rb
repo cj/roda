@@ -77,6 +77,8 @@ class Roda
     #
     # == Plugin Options
     #
+    # :add_suffix :: Whether to append a .css or .js extension to asset routes in non-compiled mode
+    #                (default: false)
     # :compiled :: A hash mapping asset identifiers to the unique id for the compiled asset file,
     #              used when precompilng your assets before application startup
     # :compiled_css_dir :: Directory name in which to store the compiled css file,
@@ -111,7 +113,8 @@ class Roda
         :prefix        => 'assets'.freeze,
         :public        => 'public'.freeze,
         :concat_only   => false,
-        :compiled      => false
+        :compiled      => false,
+        :add_suffix    => false
       }
       JS_END = "\"></script>".freeze
       CSS_END = "\" />".freeze
@@ -120,6 +123,8 @@ class Roda
       SLASH = '/'.freeze
       NEWLINE = "\n".freeze
       EMPTY_STRING = ''.freeze
+      JS_SUFFIX = '.js'.freeze
+      CSS_SUFFIX = '.css'.freeze
 
       def self.load_dependencies(app, _opts = {})
         app.plugin :render
@@ -204,6 +209,8 @@ class Roda
         opts[:css_prefix]          = sj.call(:prefix, :css_route)
         opts[:compiled_js_prefix]  = j.call(:prefix, :compiled_js_route, :compiled_name)
         opts[:compiled_css_prefix] = j.call(:prefix, :compiled_css_route, :compiled_name)
+        opts[:js_suffix]           = opts[:add_suffix] ? JS_SUFFIX : EMPTY_STRING
+        opts[:css_suffix]          = opts[:add_suffix] ? CSS_SUFFIX : EMPTY_STRING
 
         opts.freeze
       end
@@ -322,7 +329,7 @@ class Roda
               dirs.each{|f| asset_dir = asset_dir[f]}
               prefix = "#{dirs.join(SLASH)}/"
             end
-            Array(asset_dir).map{|f| "#{tag_start}#{o[:"#{stype}_prefix"]}#{prefix}#{f}#{tag_end}"}.join(NEWLINE)
+            Array(asset_dir).map{|f| "#{tag_start}#{o[:"#{stype}_prefix"]}#{prefix}#{f}#{o[:"#{stype}_suffix"]}#{tag_end}"}.join(NEWLINE)
           end
         end
 
@@ -376,15 +383,14 @@ class Roda
         def assets_regexp(type)
           o = roda_class.assets_opts
           if compiled = o[:compiled]
-            key = :"compiled_#{type}_prefix"
             assets = compiled.select{|k,_| k =~ /\A#{type}/}.map do |k, md|
               "#{k.sub(/\A#{type}/, '')}.#{md}.#{type}"
             end
+            /#{o[:"compiled_#{type}_prefix"]}(#{Regexp.union(assets)})/
           else
-            key = :"#{type}_prefix"
             assets = unnest_assets_hash(o[type])
+            /#{o[:"#{type}_prefix"]}(#{Regexp.union(assets)})#{o[:"#{type}_suffix"]}/
           end
-          /#{o[key]}(#{Regexp.union(assets)})/
         end
 
         def unnest_assets_hash(h)
