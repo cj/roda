@@ -139,6 +139,29 @@ if run_tests
       js.should include('console.log')
     end
 
+    it 'should handle rendering assets, linking to them, and accepting requests for them when not compiling with a multi-level hash' do
+      app.plugin :assets, :path=>'spec', :js_dir=>nil, :css_dir=>nil, :prefix=>nil,
+        :css=>{:assets=>{:css=>%w'app.scss raw.css'}}, :js=>{:assets=>{:js=>{:head=>'app.coffee'}}}
+      app.route do |r|
+        r.assets
+        r.is 'test' do
+          "#{assets([:css, :assets, :css])}\n#{assets([:js, :assets, :js, :head])}"
+        end
+      end
+      html = body('/test')
+      html.scan(/<link/).length.should == 2
+      html =~ %r{href="(/assets/css/app\.scss)"}
+      css = body($1)
+      html =~ %r{href="(/assets/css/raw\.css)"}
+      css2 = body($1)
+      html.scan(/<script/).length.should == 1
+      html =~ %r{src="(/assets/js/head/app\.coffee)"}
+      js = body($1)
+      css.should =~ /color: red;/
+      css2.should =~ /color: blue;/
+      js.should include('console.log')
+    end
+
     it 'should handle compiling assets, linking to them, and accepting requests for them' do
       app.compile_assets
       html = body('/test')
@@ -162,6 +185,28 @@ if run_tests
       css = body($1)
       html.scan(/<script/).length.should == 1
       html =~ %r{src="(/a/assets/js/app\.head\.[a-f0-9]{40}\.js)"}
+      js = body($1)
+      css.should =~ /color: ?red/
+      css.should =~ /color: ?blue/
+      js.should include('console.log')
+    end
+
+    it 'should handle rendering assets, linking to them, and accepting requests for them when not compiling with a multi-level hash' do
+      app.plugin :assets, :path=>'spec', :js_dir=>nil, :css_dir=>nil, :compiled_js_dir=>'js', :compiled_css_dir=>'css',
+        :css=>{:assets=>{:css=>%w'app.scss raw.css'}}, :js=>{:assets=>{:js=>{:head=>'app.coffee'}}}
+      app.compile_assets
+      app.route do |r|
+        r.assets
+        r.is 'test' do
+          "#{assets([:css, :assets, :css])}\n#{assets([:js, :assets, :js, :head])}"
+        end
+      end
+      html = body('/test')
+      html.scan(/<link/).length.should == 1
+      html =~ %r{href="(/assets/css/app\.assets\.css\.[a-f0-9]{40}\.css)"}
+      css = body($1)
+      html.scan(/<script/).length.should == 1
+      html =~ %r{src="(/assets/js/app\.assets\.js\.head\.[a-f0-9]{40}\.js)"}
       js = body($1)
       css.should =~ /color: ?red/
       css.should =~ /color: ?blue/

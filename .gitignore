@@ -5,4 +5,4 @@
 /www/public/rdoc/
 /.sass-cache/
 /spec/assets/css/app.*.css
-/spec/assets/js/app.head.*.js
+/spec/assets/js/app.*.js
