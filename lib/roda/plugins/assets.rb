@@ -346,7 +346,7 @@ class Roda
           o = roda_class.assets_opts
           if compiled = o[:compiled]
             key = :"compiled_#{type}_prefix"
-            assets = compiled.select{|k| k =~ /\A#{type}/}.map do |k, md|
+            assets = compiled.select{|k,_| k =~ /\A#{type}/}.map do |k, md|
               "#{k.sub(/\A#{type}/, '')}.#{md}.#{type}"
             end
           else
