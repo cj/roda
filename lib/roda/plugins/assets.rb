@@ -238,8 +238,8 @@ class Roda
             begin
               require 'yuicompressor'
               content = YUICompressor.send("compress_#{type}", content, :munge => true)
-            rescue LoadError
-              # yuicompressor not available, just use concatenated, uncompressed output
+            rescue LoadError, Errno::ENOENT
+              # yuicompressor or java not available, just use concatenated, uncompressed output
             end
           end
 
