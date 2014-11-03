@@ -94,6 +94,17 @@ class Roda
     # :css_headers :: A hash of additional headers for your rendered css files
     # :js_headers :: A hash of additional headers for your rendered javascript files
     module Assets
+      DEFAULTS = {
+        :compiled_name => 'app'.freeze,
+        :js_dir        => 'js'.freeze,
+        :css_dir       => 'css'.freeze,
+        :path          => 'assets'.freeze,
+        :prefix        => 'assets'.freeze,
+        :public        => 'public'.freeze,
+        :concat_only   => false,
+        :compiled      => false
+      }
+
       def self.load_dependencies(app, _opts = {})
         app.plugin :render
         app.plugin :caching
@@ -128,20 +139,13 @@ class Roda
           s.empty? ? s : (s + '/').freeze
         end
 
-        opts[:compiled_name] ||= 'app'.freeze
+        DEFAULTS.each do |k, v|
+          opts[k] = v unless opts.has_key?(k)
+        end
 
-        opts[:js_dir]           = 'js'.freeze unless opts.has_key?(:js_dir)
-        opts[:css_dir]          = 'css'.freeze unless opts.has_key?(:css_dir)
         opts[:compiled_js_dir]  = opts[:js_dir] unless opts.has_key?(:compiled_js_dir)
         opts[:compiled_css_dir] = opts[:css_dir] unless opts.has_key?(:compiled_css_dir)
-
-        opts[:path]   = 'assets'.freeze unless opts.has_key?(:path)
-        opts[:prefix] = 'assets'.freeze unless opts.has_key?(:prefix)
-        opts[:public] = 'public'.freeze unless opts.has_key?(:public)
-
-        opts[:compiled_path]   = opts[:prefix] unless opts.has_key?(:compiled_path)
-        opts[:concat_only]     = false unless opts.has_key?(:concat_only)
-        opts[:compiled]        = false unless opts.has_key?(:compiled)
+        opts[:compiled_path]    = opts[:prefix] unless opts.has_key?(:compiled_path)
 
         if headers = opts[:headers]
           opts[:css_headers] = headers.merge(opts[:css_headers])
