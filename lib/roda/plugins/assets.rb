@@ -269,13 +269,15 @@ class Roda
           end
 
           # Create a tag for each individual file
-          if o[:compiled]
+          if compiled = o[:compiled]
             if dirs && !dirs.empty?
               key = dirs.join('.')
               ckey = "#{stype}.#{key}"
-              "#{tag_start}#{o[:"compiled_#{stype}_prefix"]}.#{key}.#{o[:compiled][ckey]}.#{stype}#{tag_end}"
-            else
-              "#{tag_start}#{o[:"compiled_#{stype}_prefix"]}.#{o[:compiled][stype]}.#{stype}#{tag_end}"
+              if ukey = compiled[ckey]
+                "#{tag_start}#{o[:"compiled_#{stype}_prefix"]}.#{key}.#{ukey}.#{stype}#{tag_end}"
+              end
+            elsif ukey = compiled[stype]
+              "#{tag_start}#{o[:"compiled_#{stype}_prefix"]}.#{ukey}.#{stype}#{tag_end}"
             end
           else
             asset_dir = o[type]

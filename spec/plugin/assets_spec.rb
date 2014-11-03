@@ -124,6 +124,27 @@ if run_tests
       js.should include('console.log')
     end
 
+    it 'should handle compiling only css assets' do
+      app.compile_assets(:css)
+      html = body('/test')
+      html.scan(/<link/).length.should == 1
+      html =~ %r{href="(/assets/css/app\.[a-f0-9]{40}\.css)"}
+      css = body($1)
+      html.scan(/<script/).length.should == 0
+      css.should =~ /color: red;/
+      css.should =~ /color: blue;/
+    end
+
+    it 'should handle compiling only js assets' do
+      app.compile_assets(:js)
+      html = body('/test')
+      html.scan(/<link/).length.should == 0
+      html.scan(/<script/).length.should == 1
+      html =~ %r{src="(/assets/js/app\.head\.[a-f0-9]{40}\.js)"}
+      js = body($1)
+      js.should include('console.log')
+    end
+
     it 'should only allow files that you specify' do
       status('/assets/css/no_access.css.css').should == 404
     end
