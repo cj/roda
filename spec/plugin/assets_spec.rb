@@ -51,6 +51,9 @@ if run_tests
       keys = [:js_path, :css_path, :compiled_js_path, :compiled_css_path, :js_prefix, :css_prefix, :compiled_js_prefix, :compiled_css_prefix]
       app.assets_opts.values_at(*keys).should == %w"spec/assets/js/ spec/assets/css/ spec/assets/js/app spec/assets/css/app assets/js/ assets/css/ assets/js/app assets/css/app"
 
+      app.plugin :assets, :path=>'bar/', :public=>'foo/', :prefix=>'as/', :js_dir=>'j/', :css_dir=>'c/', :compiled_name=>'a'
+      app.assets_opts.values_at(*keys).should == %w"bar/j/ bar/c/ foo/as/j/a foo/as/c/a as/j/ as/c/ as/j/a as/c/a"
+
       app.plugin :assets, :path=>'bar', :public=>'foo', :prefix=>'as', :js_dir=>'j', :css_dir=>'c', :compiled_name=>'a'
       app.assets_opts.values_at(*keys).should == %w"bar/j/ bar/c/ foo/as/j/a foo/as/c/a as/j/ as/c/ as/j/a as/c/a"
 
