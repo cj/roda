@@ -142,10 +142,9 @@ class Roda
         DEFAULTS.each do |k, v|
           opts[k] = v unless opts.has_key?(k)
         end
-
-        opts[:compiled_js_dir]  = opts[:js_dir] unless opts.has_key?(:compiled_js_dir)
-        opts[:compiled_css_dir] = opts[:css_dir] unless opts.has_key?(:compiled_css_dir)
-        opts[:compiled_path]    = opts[:prefix] unless opts.has_key?(:compiled_path)
+        [[:compiled_js_dir, :js_dir], [:compiled_css_dir, :css_dir], [:compiled_path, :prefix]].each do |k, v|
+          opts[k]  = opts[v] unless opts.has_key?(k)
+        end
 
         if headers = opts[:headers]
           opts[:css_headers] = headers.merge(opts[:css_headers])
