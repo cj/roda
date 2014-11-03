@@ -230,16 +230,15 @@ class Roda
             files.each_key{|dir| _compile_assets([type] + dirs + [dir])}
           else
             files = Array(files)
-            compile_process_files(files, type, dirs) unless files.empty?
+            compile_assets_files(files, type, dirs) unless files.empty?
           end
         end
 
-        def compile_process_files(files, type, dirs)
+        def compile_assets_files(files, type, dirs)
           dirs = nil if dirs && dirs.empty?
-          require 'digest/sha1'
-
           o = assets_opts
           app = new
+
           content = files.map do |file|
             file = "#{dirs.join('/')}/#{file}" if dirs
             file = "#{o[:"#{type}_path"]}#{file}"
@@ -247,20 +246,28 @@ class Roda
           end.join
 
           unless o[:concat_only]
-            begin
-              require 'yuicompressor'
-              content = YUICompressor.send("compress_#{type}", content, :munge => true)
-            rescue LoadError, Errno::ENOENT
-              # yuicompressor or java not available, just use concatenated, uncompressed output
-            end
+            content = compress_asset(content, type)
           end
 
           suffix = ".#{dirs.join('.')}" if dirs
           key = "#{type}#{suffix}"
-          unique_id = o[:compiled][key] = Digest::SHA1.hexdigest(content)
+          unique_id = o[:compiled][key] = asset_digest(content)
           path = "#{o[:"compiled_#{type}_path"]}#{suffix}.#{unique_id}.#{type}"
           File.open(path, 'wb'){|f| f.write(content)}
           nil
+        end
+
+        def compress_asset(content, type)
+          require 'yuicompressor'
+          content = YUICompressor.send("compress_#{type}", content, :munge => true)
+        rescue LoadError, Errno::ENOENT
+          # yuicompressor or java not available, just use concatenated, uncompressed output
+          content
+        end
+
+        def asset_digest(content)
+          require 'digest/sha1'
+          Digest::SHA1.hexdigest(content)
         end
       end
 
