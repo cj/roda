@@ -256,9 +256,15 @@ class Roda
         # This will ouput the files with the appropriate tags
         def assets(type, attrs = {})
           o = self.class.assets_opts
-          attrs = (attrs.map{|k,v| "#{k}=\"#{v}\""}.join(' ') unless attrs.empty?)
           type, *dirs = type if type.is_a?(Array)
           stype = type.to_s
+
+          attrs = if attrs.empty?
+            ''
+          else
+            ru = Rack::Utils
+            attrs.map{|k,v| "#{k}=\"#{ru.escape_html(v.to_s)}\""}.join(' ')
+          end
 
           if type == :js
             tag_start = "<script type=\"text/javascript\" #{attrs} src=\"/"
