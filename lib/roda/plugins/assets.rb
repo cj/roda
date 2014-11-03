@@ -112,16 +112,22 @@ class Roda
 
       def self.configure(app, opts = {})
         if app.assets_opts
-          app.opts[:assets] = app.assets_opts[:orig_opts].merge(opts)
-          [:css_headers, :js_headers, :dependencies].each do |s|
-            app.opts[:assets][s] = app.opts[:assets][s].merge(opts[s]) if opts[s]
+          prev_opts = app.assets_opts[:orig_opts]
+          orig_opts = app.assets_opts[:orig_opts].merge(opts)
+          [:headers, :css_headers, :js_headers, :dependencies].each do |s|
+            if prev_opts[s]
+              if opts[s]
+                orig_opts[s] = prev_opts[s].merge(opts[s])
+              else
+                orig_opts[s] = prev_opts[s].dup
+              end
+            end
           end
+          app.opts[:assets] = orig_opts.dup
+          app.opts[:assets][:orig_opts] = orig_opts
         else
           app.opts[:assets] = opts.dup
           app.opts[:assets][:orig_opts] = opts
-          [:css_headers, :js_headers, :dependencies].each do |s|
-            app.opts[:assets][s] ||= {} 
-          end
         end
         opts = app.opts[:assets]
 
@@ -145,6 +151,9 @@ class Roda
         [[:compiled_js_dir, :js_dir], [:compiled_css_dir, :css_dir], [:compiled_path, :prefix]].each do |k, v|
           opts[k]  = opts[v] unless opts.has_key?(k)
         end
+        [:css_headers, :js_headers, :dependencies].each do |s|
+          opts[s] ||= {} 
+        end
 
         if headers = opts[:headers]
           opts[:css_headers] = headers.merge(opts[:css_headers])
@@ -153,15 +162,22 @@ class Roda
         opts[:css_headers]['Content-Type'] ||= "text/css; charset=UTF-8".freeze
         opts[:js_headers]['Content-Type']  ||= "application/javascript; charset=UTF-8".freeze
 
+        [:css_headers, :js_headers, :dependencies].each do |s|
+          opts[s].freeze
+        end
+        [:headers, :css, :js].each do |s|
+          opts[s].freeze if opts[s]
+        end
+
         # Used for reading/writing files
-        opts[:js_path]           = sj.call(:path, :compiled_js_dir)
-        opts[:css_path]          = sj.call(:path, :compiled_css_dir)
+        opts[:js_path]           = sj.call(:path, :js_dir)
+        opts[:css_path]          = sj.call(:path, :css_dir)
         opts[:compiled_js_path]  = j.call(:public, :compiled_path, :compiled_js_dir, :compiled_name)
         opts[:compiled_css_path] = j.call(:public, :compiled_path, :compiled_css_dir, :compiled_name)
 
         # Used for URLs/routes
-        opts[:js_prefix]           = sj.call(:prefix, :compiled_js_dir)
-        opts[:css_prefix]          = sj.call(:prefix, :compiled_css_dir)
+        opts[:js_prefix]           = sj.call(:prefix, :js_dir)
+        opts[:css_prefix]          = sj.call(:prefix, :css_dir)
         opts[:compiled_js_prefix]  = j.call(:prefix, :compiled_js_dir, :compiled_name)
         opts[:compiled_css_prefix] = j.call(:prefix, :compiled_css_dir, :compiled_name)
 
@@ -169,19 +185,6 @@ class Roda
       end
 
       module ClassMethods
-        # Copy the assets options into the subclass, duping
-        # them as necessary to prevent changes in the subclass
-        # affecting the parent class.
-        def inherited(subclass)
-          super
-          opts               = subclass.opts[:assets] = assets_opts.dup
-          opts[:css]         = opts[:css].dup if opts[:css] 
-          opts[:js]          = opts[:js].dup if opts[:js]
-          opts[:css_headers] = opts[:css_headers].dup
-          opts[:js_headers]  = opts[:js_headers].dup
-          opts.freeze
-        end
-
         # Return the assets options for this class.
         def assets_opts
           opts[:assets]
