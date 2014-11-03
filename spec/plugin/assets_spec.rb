@@ -1,7 +1,7 @@
 require File.expand_path("spec_helper", File.dirname(File.dirname(__FILE__)))
 
 begin
-  for lib in %w'tilt tilt/sass tilt/coffee'
+  for lib in %w'tilt sass coffee-script'
     require lib
   end
   run_tests = true
@@ -18,6 +18,12 @@ rescue
 end
 
 if run_tests
+  js_file = 'spec/assets/js/head/app.coffee'
+  css_file = 'spec/assets/css/no_access.css'
+  js_mtime = File.mtime(js_file)
+  js_atime = File.atime(js_file)
+  css_mtime = File.mtime(css_file)
+  css_atime = File.atime(css_file)
   describe 'assets plugin' do
     before do
       app(:bare) do
@@ -35,6 +41,10 @@ if run_tests
           end
         end
       end
+    end
+    after do
+      File.utime(js_atime, js_mtime, js_file)
+      File.utime(css_atime, css_mtime, css_file)
     end
 
     it 'assets_opts should use correct paths given options' do
@@ -110,6 +120,22 @@ if run_tests
       js.should include('console.log')
     end
 
+    it 'should handle rendering assets, linking to them, and accepting requests for them when not compiling, with different options' do
+      app.plugin :assets, :path=>'spec/', :js_dir=>'assets/js', :css_dir=>'assets/css', :prefix=>'a'
+      html = body('/test')
+      html.scan(/<link/).length.should == 2
+      html =~ %r{href="(/a/assets/css/app\.scss)"}
+      css = body($1)
+      html =~ %r{href="(/a/assets/css/raw\.css)"}
+      css2 = body($1)
+      html.scan(/<script/).length.should == 1
+      html =~ %r{src="(/a/assets/js/head/app\.coffee)"}
+      js = body($1)
+      css.should =~ /color: red;/
+      css2.should =~ /color: blue;/
+      js.should include('console.log')
+    end
+
     it 'should handle compiling assets, linking to them, and accepting requests for them' do
       app.compile_assets
       html = body('/test')
@@ -119,8 +145,23 @@ if run_tests
       html.scan(/<script/).length.should == 1
       html =~ %r{src="(/assets/js/app\.head\.[a-f0-9]{40}\.js)"}
       js = body($1)
-      css.should =~ /color: red;/
-      css.should =~ /color: blue;/
+      css.should =~ /color: ?red/
+      css.should =~ /color: ?blue/
+      js.should include('console.log')
+    end
+
+    it 'should handle compiling assets, linking to them, and accepting requests for them, with different options' do
+      app.plugin :assets, :compiled_path=>nil, :js_dir=>'assets/js', :css_dir=>'assets/css', :prefix=>'a', :public=>'spec', :path=>'spec' 
+      app.compile_assets
+      html = body('/test')
+      html.scan(/<link/).length.should == 1
+      html =~ %r{href="(/a/assets/css/app\.[a-f0-9]{40}\.css)"}
+      css = body($1)
+      html.scan(/<script/).length.should == 1
+      html =~ %r{src="(/a/assets/js/app\.head\.[a-f0-9]{40}\.js)"}
+      js = body($1)
+      css.should =~ /color: ?red/
+      css.should =~ /color: ?blue/
       js.should include('console.log')
     end
 
@@ -131,8 +172,8 @@ if run_tests
       html =~ %r{href="(/assets/css/app\.[a-f0-9]{40}\.css)"}
       css = body($1)
       html.scan(/<script/).length.should == 0
-      css.should =~ /color: red;/
-      css.should =~ /color: blue;/
+      css.should =~ /color: ?red/
+      css.should =~ /color: ?blue/
     end
 
     it 'should handle compiling only js assets' do
@@ -145,8 +186,99 @@ if run_tests
       js.should include('console.log')
     end
 
+    it 'should handle compiling asset subfolders' do
+      app.compile_assets([:js, :head])
+      html = body('/test')
+      html.scan(/<link/).length.should == 0
+      html.scan(/<script/).length.should == 1
+      html =~ %r{src="(/assets/js/app\.head\.[a-f0-9]{40}\.js)"}
+      js = body($1)
+      js.should include('console.log')
+    end
+
+    it 'should handle compiling assets when only a single asset type is present' do
+      app.plugin :assets, :css=>nil
+      app.compile_assets
+      html = body('/test')
+      html.scan(/<link/).length.should == 0
+      html.scan(/<script/).length.should == 1
+      html =~ %r{src="(/assets/js/app\.head\.[a-f0-9]{40}\.js)"}
+      js = body($1)
+      js.should include('console.log')
+    end
+
+    it 'should handle compiling assets when an empty array is used' do
+      app.plugin :assets, :css=>[]
+      app.compile_assets
+      html = body('/test')
+      html.scan(/<link/).length.should == 0
+      html.scan(/<script/).length.should == 1
+      html =~ %r{src="(/assets/js/app\.head\.[a-f0-9]{40}\.js)"}
+      js = body($1)
+      js.should include('console.log')
+    end
+
+    it '#assets should include attributes given' do
+      app.new.assets([:js, :head], 'a'=>'b').should == '<script type="text/javascript" a="b" src="/assets/js/head/app.coffee"></script>'
+    end
+
+    it '#assets should escape attribute values given' do
+      app.new.assets([:js, :head], 'a'=>'b"e').should == '<script type="text/javascript" a="b&quot;e" src="/assets/js/head/app.coffee"></script>'
+    end
+
+    it 'requests for assets should return 304 if the asset has not been modified' do
+      loc = '/assets/js/head/app.coffee'
+      lm = header('Last-Modified', loc)
+      status(loc, 'HTTP_IF_MODIFIED_SINCE'=>lm).should == 304
+      body(loc, 'HTTP_IF_MODIFIED_SINCE'=>lm).should == ''
+    end
+
+    it 'requests for assets should not return 304 if the asset has been modified' do
+      loc = '/assets/js/head/app.coffee'
+      lm = header('Last-Modified', loc)
+      File.utime(js_atime, js_mtime+1, js_file)
+      status(loc, 'HTTP_IF_MODIFIED_SINCE'=>lm).should == 200
+      body(loc, 'HTTP_IF_MODIFIED_SINCE'=>lm).should include('console.log')
+    end
+
+    it 'requests for assets should return 304 if the dependency of an asset has not been modified' do
+      app.plugin :assets, :dependencies=>{js_file=>css_file}
+      loc = '/assets/js/head/app.coffee'
+      lm = header('Last-Modified', loc)
+      status(loc, 'HTTP_IF_MODIFIED_SINCE'=>lm).should == 304
+      body(loc, 'HTTP_IF_MODIFIED_SINCE'=>lm).should == ''
+    end
+
+    it 'requests for assets should return 200 if the dependency of an asset has been modified' do
+      app.plugin :assets, :dependencies=>{js_file=>css_file}
+      loc = '/assets/js/head/app.coffee'
+      lm = header('Last-Modified', loc)
+      File.utime(css_atime, [css_mtime+1, js_mtime+1].max, css_file)
+      status(loc, 'HTTP_IF_MODIFIED_SINCE'=>lm).should == 200
+      body(loc, 'HTTP_IF_MODIFIED_SINCE'=>lm).should include('console.log')
+    end
+
+    it 'should do a terminal match for assets' do
+      status('/assets/css/app.scss/foo').should == 404
+    end
+
     it 'should only allow files that you specify' do
-      status('/assets/css/no_access.css.css').should == 404
+      status('/assets/css/no_access.css').should == 404
+    end
+
+    it 'should not add routes for empty asset types' do
+      app.plugin :assets, :css=>nil
+      a = app::RodaRequest.assets_matchers
+      a.length.should == 1
+      a.first.length.should == 2
+      a.first.first.should == 'js'
+      'assets/js/head/app.coffee'.should =~ a.first.last
+      'assets/js/head/app2.coffee'.should_not =~ a.first.last
+    end
+
+    it 'should not add routes if no asset types' do
+      app.plugin :assets, :js=>nil, :css=>nil
+      app::RodaRequest.assets_matchers.should == []
     end
   end
 end
