@@ -65,6 +65,9 @@ class Roda
     #   assets/css/frontend/some_frontend_file.scss
     #   assets/css/backend/some_backend_file.scss
     #
+    # If you want do not want to force that directory structure when using
+    # asset groups, you can use the <tt>:group_subdirs => false</tt> option.
+    #
     # In your view code use an array argument in your call to assets:
     #
     #   <%= assets([:css, :frontend]) %>
@@ -191,6 +194,8 @@ class Roda
     # :dependencies :: A hash of dependencies for your asset files.  Keys should be paths to asset files,
     #                  values should be arrays of paths your asset files depends on.  This is used to
     #                  detect changes in your asset files.
+    # :group_subdirs :: Whether a hash used in :css and :js options requires the assets for the
+    #                   related group are contained in a subdirectory with the same name (default: true)
     # :headers :: A hash of additional headers for both js and css rendered files
     # :prefix :: Prefix for assets path in your URL/routes (default: 'assets')
     # :path :: Path to your asset source directory (default: 'assets')
@@ -208,8 +213,9 @@ class Roda
         :public        => 'public'.freeze,
         :concat_only   => false,
         :compiled      => false,
-        :add_suffix    => false
-      }
+        :add_suffix    => false,
+        :group_subdirs  => true,
+      }.freeze
       JS_END = "\"></script>".freeze
       CSS_END = "\" />".freeze
       SPACE = ' '.freeze
@@ -353,7 +359,7 @@ class Roda
           app = new
 
           content = files.map do |file|
-            file = "#{dirs.join('/')}/#{file}" if dirs
+            file = "#{dirs.join('/')}/#{file}" if dirs && o[:group_subdirs]
             file = "#{o[:"#{type}_path"]}#{file}"
             app.read_asset_file(file, type)
           end.join
@@ -421,7 +427,7 @@ class Roda
             asset_dir = o[type]
             if dirs && !dirs.empty?
               dirs.each{|f| asset_dir = asset_dir[f]}
-              prefix = "#{dirs.join(SLASH)}/"
+              prefix = "#{dirs.join(SLASH)}/" if o[:group_subdirs]
             end
             Array(asset_dir).map{|f| "#{tag_start}#{o[:"#{stype}_prefix"]}#{prefix}#{f}#{o[:"#{stype}_suffix"]}#{tag_end}"}.join(NEWLINE)
           end
@@ -490,7 +496,11 @@ class Roda
         def unnest_assets_hash(h)
           case h
           when Hash
-            h.map{|k,v| unnest_assets_hash(v).map{|x| "#{k}/#{x}"}}.flatten(1)
+            h.map do |k,v|
+              assets = unnest_assets_hash(v)
+              assets = assets.map{|x| "#{k}/#{x}"} if roda_class.assets_opts[:group_subdirs]
+              assets
+            end.flatten(1)
           else
             Array(h)
           end
