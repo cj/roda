@@ -1,24 +1,16 @@
 require File.expand_path("spec_helper", File.dirname(File.dirname(__FILE__)))
 
 begin
-  for lib in %w'tilt sass coffee-script'
+  for lib in %w'tilt sass'
     require lib
   end
   run_tests = true
 rescue LoadError
   warn "#{lib} not installed, skipping assets plugin test"
-rescue
-  # ExecJS::RuntimeUnavailable may or may not be defined, so can't just do:
-  #   rescue ExecJS::RuntimeUnavailable'
-  if $!.class.name == 'ExecJS::RuntimeUnavailable'
-    warn "#{$!.to_s}: skipping assets plugin tests"
-  else
-    raise
-  end
 end
 
 if run_tests
-  js_file = 'spec/assets/js/head/app.coffee'
+  js_file = 'spec/assets/js/head/app.js'
   css_file = 'spec/assets/css/no_access.css'
   js_mtime = File.mtime(js_file)
   js_atime = File.atime(js_file)
@@ -29,7 +21,7 @@ if run_tests
       app(:bare) do
         plugin :assets,
           :css => ['app.scss', 'raw.css'],
-          :js => { :head => ['app.coffee'] },
+          :js => { :head => ['app.js'] },
           :path => 'spec/assets',
           :public => 'spec'
 
@@ -119,7 +111,7 @@ if run_tests
       html =~ %r{href="(/assets/css/raw\.css)"}
       css2 = body($1)
       html.scan(/<script/).length.should == 1
-      html =~ %r{src="(/assets/js/head/app\.coffee)"}
+      html =~ %r{src="(/assets/js/head/app\.js)"}
       js = body($1)
       css.should =~ /color: red;/
       css2.should =~ /color: blue;/
@@ -136,7 +128,7 @@ if run_tests
       html =~ %r{href="(/a/bar/raw\.css.css)"}
       css2 = body($1)
       html.scan(/<script/).length.should == 1
-      html =~ %r{src="(/a/foo/head/app\.coffee.js)"}
+      html =~ %r{src="(/a/foo/head/app\.js.js)"}
       js = body($1)
       css.should =~ /color: red;/
       css2.should =~ /color: blue;/
@@ -145,7 +137,7 @@ if run_tests
 
     it 'should handle rendering assets, linking to them, and accepting requests for them when not compiling with a multi-level hash' do
       app.plugin :assets, :path=>'spec', :js_dir=>nil, :css_dir=>nil, :prefix=>nil,
-        :css=>{:assets=>{:css=>%w'app.scss raw.css'}}, :js=>{:assets=>{:js=>{:head=>'app.coffee'}}}
+        :css=>{:assets=>{:css=>%w'app.scss raw.css'}}, :js=>{:assets=>{:js=>{:head=>'app.js'}}}
       app.route do |r|
         r.assets
         r.is 'test' do
@@ -159,7 +151,7 @@ if run_tests
       html =~ %r{href="(/assets/css/raw\.css)"}
       css2 = body($1)
       html.scan(/<script/).length.should == 1
-      html =~ %r{src="(/assets/js/head/app\.coffee)"}
+      html =~ %r{src="(/assets/js/head/app\.js)"}
       js = body($1)
       css.should =~ /color: red;/
       css2.should =~ /color: blue;/
@@ -198,7 +190,7 @@ if run_tests
 
     it 'should handle rendering assets, linking to them, and accepting requests for them when not compiling with a multi-level hash' do
       app.plugin :assets, :path=>'spec', :js_dir=>nil, :css_dir=>nil, :compiled_js_dir=>'js', :compiled_css_dir=>'css',
-        :css=>{:assets=>{:css=>%w'app.scss raw.css'}}, :js=>{:assets=>{:js=>{:head=>'app.coffee'}}}
+        :css=>{:assets=>{:css=>%w'app.scss raw.css'}}, :js=>{:assets=>{:js=>{:head=>'app.js'}}}
       app.compile_assets
       app.route do |r|
         r.assets
@@ -272,22 +264,22 @@ if run_tests
     end
 
     it '#assets should include attributes given' do
-      app.new.assets([:js, :head], 'a'=>'b').should == '<script type="text/javascript" a="b" src="/assets/js/head/app.coffee"></script>'
+      app.new.assets([:js, :head], 'a'=>'b').should == '<script type="text/javascript" a="b" src="/assets/js/head/app.js"></script>'
     end
 
     it '#assets should escape attribute values given' do
-      app.new.assets([:js, :head], 'a'=>'b"e').should == '<script type="text/javascript" a="b&quot;e" src="/assets/js/head/app.coffee"></script>'
+      app.new.assets([:js, :head], 'a'=>'b"e').should == '<script type="text/javascript" a="b&quot;e" src="/assets/js/head/app.js"></script>'
     end
 
     it 'requests for assets should return 304 if the asset has not been modified' do
-      loc = '/assets/js/head/app.coffee'
+      loc = '/assets/js/head/app.js'
       lm = header('Last-Modified', loc)
       status(loc, 'HTTP_IF_MODIFIED_SINCE'=>lm).should == 304
       body(loc, 'HTTP_IF_MODIFIED_SINCE'=>lm).should == ''
     end
 
     it 'requests for assets should not return 304 if the asset has been modified' do
-      loc = '/assets/js/head/app.coffee'
+      loc = '/assets/js/head/app.js'
       lm = header('Last-Modified', loc)
       File.utime(js_atime, js_mtime+1, js_file)
       status(loc, 'HTTP_IF_MODIFIED_SINCE'=>lm).should == 200
@@ -296,7 +288,7 @@ if run_tests
 
     it 'requests for assets should return 304 if the dependency of an asset has not been modified' do
       app.plugin :assets, :dependencies=>{js_file=>css_file}
-      loc = '/assets/js/head/app.coffee'
+      loc = '/assets/js/head/app.js'
       lm = header('Last-Modified', loc)
       status(loc, 'HTTP_IF_MODIFIED_SINCE'=>lm).should == 304
       body(loc, 'HTTP_IF_MODIFIED_SINCE'=>lm).should == ''
@@ -304,7 +296,7 @@ if run_tests
 
     it 'requests for assets should return 200 if the dependency of an asset has been modified' do
       app.plugin :assets, :dependencies=>{js_file=>css_file}
-      loc = '/assets/js/head/app.coffee'
+      loc = '/assets/js/head/app.js'
       lm = header('Last-Modified', loc)
       File.utime(css_atime, [css_mtime+1, js_mtime+1].max, css_file)
       status(loc, 'HTTP_IF_MODIFIED_SINCE'=>lm).should == 200
@@ -325,8 +317,8 @@ if run_tests
       a.length.should == 1
       a.first.length.should == 2
       a.first.first.should == 'js'
-      'assets/js/head/app.coffee'.should =~ a.first.last
-      'assets/js/head/app2.coffee'.should_not =~ a.first.last
+      'assets/js/head/app.js'.should =~ a.first.last
+      'assets/js/head/app2.js'.should_not =~ a.first.last
     end
 
     it 'should not add routes if no asset types' do

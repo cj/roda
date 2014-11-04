@@ -6,6 +6,3 @@ gemspec
 if RUBY_VERSION < '1.9'
   gem 'json'
 end
-if RUBY_VERSION < '1.9.3'
-  gem 'execjs', '< 2'
-end
