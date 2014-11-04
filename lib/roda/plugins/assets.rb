@@ -28,9 +28,10 @@ class Roda
     # If you want to change the paths where asset files are stored, see the
     # Options section below.
     #
-    # === Routing
+    # === Serving
     #
-    # In your routes, call the r.assets method to add a route to your assets:
+    # In your routes, call the r.assets method to add a route to your assets,
+    # which will make your app serve the rendered assets:
     #
     #   route do |r|
     #     r.assets
@@ -226,11 +227,15 @@ class Roda
       JS_SUFFIX = '.js'.freeze
       CSS_SUFFIX = '.css'.freeze
 
+      # Load the render and caching plugins plugins, since the assets plugin
+      # depends on them.
       def self.load_dependencies(app, _opts = {})
         app.plugin :render
         app.plugin :caching
       end
 
+      # Setup the options for the plugin.  See the Assets module RDoc
+      # for a description of the supported options.
       def self.configure(app, opts = {})
         if app.assets_opts
           prev_opts = app.assets_opts[:orig_opts]
@@ -321,6 +326,10 @@ class Roda
           opts[:assets]
         end
 
+        # Compile options for the given asset type.  If no asset_type
+        # is given, compile both the :css and :js asset types.  You
+        # can specify an array of types (e.g. [:css, :frontend]) to
+        # compile assets for the given asset group.
         def compile_assets(type=nil)
           unless assets_opts[:compiled]
             opts[:assets] = assets_opts.merge(:compiled => {})
@@ -338,6 +347,8 @@ class Roda
 
         private
 
+        # Internals of compile_assets, handling recursive calls for loading
+        # all asset groups under the given type.
         def _compile_assets(type)
           type, *dirs = type if type.is_a?(Array)
           dirs ||= []
@@ -353,6 +364,9 @@ class Roda
           end
         end
 
+        # Compile each array of files for the given type into a single
+        # file.  Dirs should be an array of asset group names, if these
+        # are files in an asset group.
         def compile_assets_files(files, type, dirs)
           dirs = nil if dirs && dirs.empty?
           o = assets_opts
@@ -376,6 +390,10 @@ class Roda
           nil
         end
 
+        # Compress the given content for the given type using yuicompressor,
+        # but handle cases where yuicompressor isn't installed or can't find
+        # a java runtime.  This method can be overridden by the application
+        # to use a different compressor.
         def compress_asset(content, type)
           require 'yuicompressor'
           content = YUICompressor.send("compress_#{type}", content, :munge => true)
@@ -384,6 +402,10 @@ class Roda
           content
         end
 
+        # Return a unique id for the given content.  By default, uses the
+        # SHA1 hash of the content.  This method can be overridden to use
+        # a different digest type or to return a static string if you don't
+        # want to use a unique value.
         def asset_digest(content)
           require 'digest/sha1'
           Digest::SHA1.hexdigest(content)
@@ -391,7 +413,16 @@ class Roda
       end
 
       module InstanceMethods
-        # This will ouput the files with the appropriate tags
+        # Return a string containing html tags for the given asset type.
+        # This will use a script tag for the :js type and a link tag for
+        # the :css type.
+        #
+        # To return the tags for a specific asset group, use an array for
+        # the type, such as [:css, :frontend].
+        #
+        # When the assets are not compiled, this will result in a separate
+        # tag for each asset file.  When the assets are compiled, this will
+        # result in a single tag to the compiled asset file.
         def assets(type, attrs = nil)
           o = self.class.assets_opts
           type, *dirs = type if type.is_a?(Array)
@@ -433,6 +464,13 @@ class Roda
           end
         end
 
+        # Render the asset with the given filename.  When assets are compiled,
+        # or when the file is already of the given type (no rendering necessary),
+        # this returns the contents of the compiled file.
+        # When assets are not compiled and the file is not already of the correct,
+        # this will render the asset using the render plugin.
+        # In both cases, if the file has not been modified since the last request,
+        # this will return a 304 response.
         def render_asset(file, type)
           o = self.class.assets_opts
           if o[:compiled]
@@ -446,6 +484,9 @@ class Roda
           end
         end
 
+        # Return the content of the file if it is already of the correct type.
+        # Otherwise, render the file using the render plugin.  +file+ should be
+        # the relative path to the file from the current directory.
         def read_asset_file(file, type)
           if file.end_with?(".#{type}")
             File.read(file)
@@ -456,6 +497,9 @@ class Roda
 
         private
 
+        # Return when the file was last modified.  If the file depends on any
+        # other files, check the modification times of all dependencies and
+        # return the maximum.
         def asset_last_modified(file)
           if deps = self.class.assets_opts[:dependencies][file]
             ([file] + Array(deps)).map{|f| File.stat(f).mtime}.max
@@ -464,6 +508,9 @@ class Roda
           end
         end
 
+        # If the asset hasn't been modified since the last request, return
+        # a 304 response immediately.  Otherwise, add the appropriate
+        # type-specific headers.
         def check_asset_request(file, type, mtime)
           request.last_modified(mtime)
           response.headers.merge!(self.class.assets_opts[:"#{type}_headers"])
@@ -471,7 +518,8 @@ class Roda
       end
 
       module RequestClassMethods
-        # The matcher for the assets route
+        # An array of asset type strings and regexps for that type, for all asset types
+        # handled.
         def assets_matchers
           @assets_matchers ||= [:css, :js].map do |t|
             [t.to_s.freeze, assets_regexp(t)].freeze if roda_class.assets_opts[t]
@@ -480,6 +528,8 @@ class Roda
 
         private
 
+        # The regexp matcher to use for the given type.  This handles any asset groups
+        # for the asset types.
         def assets_regexp(type)
           o = roda_class.assets_opts
           if compiled = o[:compiled]
@@ -489,10 +539,12 @@ class Roda
             /#{o[:"compiled_#{type}_prefix"]}(#{Regexp.union(assets)})/
           else
             assets = unnest_assets_hash(o[type])
-            /#{o[:"#{type}_prefix"]}(#{Regexp.union(assets)})#{o[:"#{type}_suffix"]}/
+            /#{o[:"#{type}_prefix"]}(#{Regexp.union(assets.uniq)})#{o[:"#{type}_suffix"]}/
           end
         end
 
+        # Recursively unnested the given assets hash, returning a single array of asset
+        # files for the given.
         def unnest_assets_hash(h)
           case h
           when Hash
@@ -508,7 +560,7 @@ class Roda
       end
 
       module RequestMethods
-        # Handles requests for assets
+        # Render the matching asset if this is a GET request for a supported asset.
         def assets
           if is_get?
             self.class.assets_matchers.each do |type, matcher|
