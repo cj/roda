@@ -131,7 +131,7 @@ if run_tests
       html.scan(/<script/).length.should == 1
       html =~ %r{src="(/a/foo/head/app\.js.js)"}
       js = body($1)
-      css.should =~ /color:red}/
+      css.should =~ /color:red\}/
       css2.should =~ /color: blue;/
       js.should include('console.log')
     end
