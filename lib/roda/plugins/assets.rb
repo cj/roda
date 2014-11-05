@@ -242,7 +242,7 @@ class Roda
         if app.assets_opts
           prev_opts = app.assets_opts[:orig_opts]
           orig_opts = app.assets_opts[:orig_opts].merge(opts)
-          [:headers, :css_headers, :js_headers, :dependencies].each do |s|
+          [:headers, :css_headers, :js_headers, :css_opts, :js_opts, :dependencies].each do |s|
             if prev_opts[s]
               if opts[s]
                 orig_opts[s] = prev_opts[s].merge(opts[s])
