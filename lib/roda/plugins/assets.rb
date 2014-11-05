@@ -191,6 +191,7 @@ class Roda
     #                 and compressing files (default: false)
     # :css_dir :: Directory name containing your css source, inside :path (default: 'css')
     # :css_headers :: A hash of additional headers for your rendered css files
+    # :css_opts :: Options to pass to the render plugin when rendering css assets
     # :css_route :: Route under :prefix for css assets (default: :css_dir)
     # :dependencies :: A hash of dependencies for your asset files.  Keys should be paths to asset files,
     #                  values should be arrays of paths your asset files depends on.  This is used to
@@ -203,6 +204,7 @@ class Roda
     # :public :: Path to your public folder, in which compiled files are placed (default: 'public')
     # :js_dir :: Directory name containing your javascript source, inside :path (default: 'js')
     # :js_headers :: A hash of additional headers for your rendered javascript files
+    # :js_opts :: Options to pass to the render plugin when rendering javascript assets
     # :js_route :: Route under :prefix for javascript assets (default: :js_dir)
     module Assets
       DEFAULTS = {
@@ -285,7 +287,7 @@ class Roda
         ].each do |k, v|
           opts[k]  = opts[v] unless opts.has_key?(k)
         end
-        [:css_headers, :js_headers, :dependencies].each do |s|
+        [:css_headers, :js_headers, :css_opts, :js_opts, :dependencies].each do |s|
           opts[s] ||= {} 
         end
 
@@ -296,7 +298,7 @@ class Roda
         opts[:css_headers]['Content-Type'] ||= "text/css; charset=UTF-8".freeze
         opts[:js_headers]['Content-Type']  ||= "application/javascript; charset=UTF-8".freeze
 
-        [:css_headers, :js_headers, :dependencies].each do |s|
+        [:css_headers, :js_headers, :css_opts, :js_opts, :dependencies].each do |s|
           opts[s].freeze
         end
         [:headers, :css, :js].each do |s|
@@ -491,7 +493,7 @@ class Roda
           if file.end_with?(".#{type}")
             File.read(file)
           else
-            render(:path => file)
+            render_asset_file(file, self.class.assets_opts[:"#{type}_opts"])
           end
         end
 
@@ -514,6 +516,12 @@ class Roda
         def check_asset_request(file, type, mtime)
           request.last_modified(mtime)
           response.headers.merge!(self.class.assets_opts[:"#{type}_headers"])
+        end
+
+        # Render the given asset file using the render plugin, with the given options.
+        # +file+ should be the relative path to the file from the current directory.
+        def render_asset_file(file, options)
+          render({:path => file}, options)
         end
       end
 

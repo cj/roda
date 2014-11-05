@@ -120,7 +120,7 @@ if run_tests
 
     it 'should handle rendering assets, linking to them, and accepting requests for them when not compiling, with different options' do
       app.plugin :assets, :path=>'spec/', :js_dir=>'assets/js', :css_dir=>'assets/css', :prefix=>'a',
-        :js_route=>'foo', :css_route=>'bar', :add_suffix=>true
+        :js_route=>'foo', :css_route=>'bar', :add_suffix=>true, :css_opts=>{:style=>:compressed}
       html = body('/test')
       html.scan(/<link/).length.should == 2
       html =~ %r{href="(/a/bar/app\.scss.css)"}
@@ -130,7 +130,7 @@ if run_tests
       html.scan(/<script/).length.should == 1
       html =~ %r{src="(/a/foo/head/app\.js.js)"}
       js = body($1)
-      css.should =~ /color: red;/
+      css.should =~ /color:red}/
       css2.should =~ /color: blue;/
       js.should include('console.log')
     end
