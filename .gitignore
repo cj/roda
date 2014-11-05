@@ -3,6 +3,5 @@
 /coverage/
 /www/public/*.html
 /www/public/rdoc/
-/.sass-cache/
 /spec/assets/css/app.*.css
 /spec/assets/js/app.*.js

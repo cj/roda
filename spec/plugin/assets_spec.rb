@@ -23,7 +23,8 @@ if run_tests
           :css => ['app.scss', 'raw.css'],
           :js => { :head => ['app.js'] },
           :path => 'spec/assets',
-          :public => 'spec'
+          :public => 'spec',
+          :css_opts => {:cache=>false}
 
         route do |r|
           r.assets
