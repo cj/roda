@@ -398,7 +398,9 @@ class Roda
         # to use a different compressor.
         def compress_asset(content, type)
           require 'yuicompressor'
+          # :nocov:
           content = YUICompressor.send("compress_#{type}", content, :munge => true)
+          # :nocov:
         rescue LoadError, Errno::ENOENT
           # yuicompressor or java not available, just use concatenated, uncompressed output
           content
